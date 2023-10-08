@@ -1,0 +1,43 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "BaseToolbox",
+        "repositoryURL": "https://github.com/lkzhao/BaseToolbox",
+        "state": {
+          "branch": null,
+          "revision": "62fe235533582054af1d7f13de714c76a72cf12f",
+          "version": "0.4.1"
+        }
+      },
+      {
+        "package": "Kingfisher",
+        "repositoryURL": "https://github.com/onevcat/Kingfisher",
+        "state": {
+          "branch": null,
+          "revision": "b6f62758f21a8c03cd64f4009c037cfa580a256e",
+          "version": "7.9.1"
+        }
+      },
+      {
+        "package": "ScreenCorners",
+        "repositoryURL": "https://github.com/kylebshr/ScreenCorners",
+        "state": {
+          "branch": null,
+          "revision": "1b71897c8d9091cad34bf10a47e3810c0c10e1e8",
+          "version": "1.0.1"
+        }
+      },
+      {
+        "package": "UIComponent",
+        "repositoryURL": "https://github.com/lkzhao/UIComponent",
+        "state": {
+          "branch": "2.0",
+          "revision": "dde2b2d4eb7fe80db4b5ee20597a10dd9af8115a",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}
