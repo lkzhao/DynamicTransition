@@ -82,6 +82,7 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
 
     public init(rootViewController: UIViewController) {
         self.state = State(children: [rootViewController])
+        setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
         addVC(state.children.last!)
     }
@@ -120,11 +121,11 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
                 state.children = target
                 return .none
             }
-            let isPush = target.count > source.count
-            let foreground = isPush ? to : from
-            let background = isPush ? from : to
-            let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPush, otherViewController: background) ?? MatchTransition()
-            let context = NavigationTransitionContext(container: view, isPresenting: isPush, from: from, to: to, store: store)
+            let isPresenting = target.count > source.count
+            let foreground = isPresenting ? to : from
+            let background = isPresenting ? from : to
+            let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? MatchTransition()
+            let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, store: store)
             state.transition = State.TransitionState(context: context, transition: transition, source: source, target: target)
 
             from.beginAppearanceTransition(false, animated: true)
@@ -218,9 +219,4 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
     open override var childViewControllerForPointerLock: UIViewController? {
         viewControllers.last
     }
-}
-
-
-public protocol TransitionProvider: UIViewController {
-    func transitionFor(presenting: Bool, otherViewController: UIViewController) -> Transition?
 }

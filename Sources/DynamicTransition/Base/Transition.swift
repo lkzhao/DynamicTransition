@@ -3,6 +3,10 @@
 
 import UIKit
 
+public protocol TransitionProvider {
+    func transitionFor(presenting: Bool, otherViewController: UIViewController) -> Transition?
+}
+
 public protocol TransitionContext {
     var from: UIViewController { get }
     var to: UIViewController { get }
@@ -22,5 +26,11 @@ public extension TransitionContext {
     }
     var background: UIViewController {
         isPresenting ? from : to
+    }
+    var foregroundView: UIView {
+        foreground.view
+    }
+    var backgroundView: UIView {
+        background.view
     }
 }

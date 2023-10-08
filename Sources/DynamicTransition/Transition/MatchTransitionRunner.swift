@@ -18,8 +18,8 @@ class MatchTransitionRunner {
     var isPresenting: Bool { context.isPresenting }
     var foreground: UIViewController { context.foreground }
     var background: UIViewController { context.background }
-    var foregroundView: UIView { context.foreground.view }
-    var backgroundView: UIView { context.background.view }
+    var foregroundView: UIView { context.foregroundView }
+    var backgroundView: UIView { context.backgroundView }
 
     let foregroundContainerView = MatchTransitionContainerView()
 

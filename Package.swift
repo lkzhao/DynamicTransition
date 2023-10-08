@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.3
 
 import PackageDescription
 
@@ -14,7 +14,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/lkzhao/BaseToolbox", from: "0.1.0"),
+        .package(url: "https://github.com/lkzhao/BaseToolbox", from: "0.5.0"),
         .package(url: "https://github.com/lkzhao/YetAnotherAnimationLibrary", from: "1.6.0"),
         .package(url: "https://github.com/kylebshr/ScreenCorners", from: "1.0.1"),
     ],
