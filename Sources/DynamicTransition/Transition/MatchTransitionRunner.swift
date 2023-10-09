@@ -37,6 +37,10 @@ class MatchTransitionRunner {
 
     var scrollViewObserver: Any?
 
+    var isMatched: Bool {
+        matchedSourceView != nil
+    }
+
     init(context: TransitionContext,
          isTransitioningVertically: Bool,
          completion: @escaping (Bool) -> Void) {
@@ -89,18 +93,21 @@ class MatchTransitionRunner {
         let dismissedFrame = matchedSourceView.map {
             container.convert($0.bounds, from: $0)
         } ?? defaultDismissedFrame
-        let presentedFrame = matchedDestinationView.map {
+        let presentedFrame = isMatched ? matchedDestinationView.map {
             container.convert($0.bounds, from: $0)
-        } ?? container.bounds
+        } ?? container.bounds : container.bounds
 
         let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
-        presentedState = ViewState(foregroundContainerCornerRadius: isFullScreen ? UIScreen.main.displayCornerRadius : 0,
-                                       foregroundContainerFrame: container.bounds,
-                                       foregroundTranslation: .zero,
-                                       foregroundRotation: 0,
-                                       foregroundScale: 1,
-                                       sourceViewFrame: presentedFrame,
-                                       sourceViewAlpha: 0)
+        let presentedCornerRadius = isFullScreen ? UIScreen.main.displayCornerRadius : 0
+        let dismissedCornerRadius = matchedSourceView?.cornerRadius ?? presentedCornerRadius
+        
+        presentedState = ViewState(foregroundContainerCornerRadius: presentedCornerRadius,
+                                   foregroundContainerFrame: container.bounds,
+                                   foregroundContainerRotation: 0,
+                                   foregroundTranslation: .zero,
+                                   foregroundScale: 1,
+                                   sourceViewFrame: presentedFrame,
+                                   progress: 1)
 
         let scaledSize = presentedFrame.size.size(fill: dismissedFrame.size)
         let scale = scaledSize.width / container.bounds.width
@@ -112,23 +119,23 @@ class MatchTransitionRunner {
             x: offsetX + sizeOffset.width,
             y: offsetY + sizeOffset.height + originOffset)
 
-        dismissedState = ViewState(foregroundContainerCornerRadius: matchedSourceView?.cornerRadius ?? 0,
-                                       foregroundContainerFrame: dismissedFrame,
-                                       foregroundTranslation: offset,
-                                       foregroundRotation: 0,
-                                       foregroundScale: scale,
-                                       sourceViewFrame: dismissedFrame.bounds,
-                                       sourceViewAlpha: 1)
+        dismissedState = ViewState(foregroundContainerCornerRadius: dismissedCornerRadius,
+                                   foregroundContainerFrame: dismissedFrame,
+                                   foregroundContainerRotation: 0,
+                                   foregroundTranslation: offset,
+                                   foregroundScale: scale,
+                                   sourceViewFrame: dismissedFrame.bounds,
+                                   progress: 0)
     }
 
     struct ViewState {
         var foregroundContainerCornerRadius: CGFloat = .zero
         var foregroundContainerFrame: CGRect = .zero
+        var foregroundContainerRotation: CGFloat = .zero
         var foregroundTranslation: CGPoint = .zero
-        var foregroundRotation: CGFloat = .zero
         var foregroundScale: CGFloat = .zero
         var sourceViewFrame: CGRect = .zero
-        var sourceViewAlpha: CGFloat = .zero
+        var progress: CGFloat = .zero
     }
 
     var completingTransition: Bool?
@@ -147,16 +154,16 @@ class MatchTransitionRunner {
         let stiffness: Double = 350
         let damping: Double = 30
         foregroundContainerView.yaal.cornerRadius.updateTo(value: state.foregroundContainerCornerRadius, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.size.updateTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0, completion: completion)
-        foregroundContainerView.yaal.center.updateTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
-        foregroundContainerView.yaal.rotation.updateTo(value: state.foregroundRotation, animated: animated, stiffness: stiffness, damping: damping)
-        overlayView.yaal.alpha.updateTo(value: 1 - state.sourceViewAlpha, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.shadowOpacity.updateTo(value: 1 - state.sourceViewAlpha, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.size.updateTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
+        foregroundContainerView.yaal.center.updateTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0, completion: completion)
+        foregroundContainerView.yaal.rotation.updateTo(value: state.foregroundContainerRotation, animated: animated, stiffness: stiffness, damping: damping)
         foregroundView.yaal.translation.updateTo(value: state.foregroundTranslation, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
         foregroundView.yaal.scale.updateTo(value: state.foregroundScale, animated: animated, stiffness: stiffness, damping: damping)
         sourceViewSnapshot?.yaal.size.updateTo(value: state.sourceViewFrame.size, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
         sourceViewSnapshot?.yaal.center.updateTo(value: state.sourceViewFrame.center, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
-        sourceViewSnapshot?.yaal.alpha.updateTo(value: state.sourceViewAlpha, animated: animated, stiffness: stiffness, damping: damping)
+        sourceViewSnapshot?.yaal.alpha.updateTo(value: 1 - state.progress, animated: animated, stiffness: stiffness, damping: damping)
+        overlayView.yaal.alpha.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.shadowOpacity.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
     }
 
     func pause() {
@@ -174,11 +181,11 @@ class MatchTransitionRunner {
     func currentState() -> ViewState {
         ViewState(foregroundContainerCornerRadius: foregroundContainerView.cornerRadius,
                   foregroundContainerFrame: foregroundContainerView.frameWithoutTransform,
+                  foregroundContainerRotation: foregroundContainerView.yaal.rotation.value.value,
                   foregroundTranslation: foregroundView.yaal.translation.value.value,
-                  foregroundRotation: foregroundView.yaal.rotation.value.value,
                   foregroundScale: foregroundView.yaal.scale.value.value,
                   sourceViewFrame: sourceViewSnapshot?.frameWithoutTransform ?? .zero,
-                  sourceViewAlpha: sourceViewSnapshot?.alpha ?? 0)
+                  progress: overlayView.alpha)
     }
 
     func add(progress: CGFloat, newCenter: CGPoint, rotation: CGFloat) {
@@ -190,15 +197,15 @@ class MatchTransitionRunner {
         let foregroundTranslation = (targetState.foregroundTranslation - sourceState.foregroundTranslation) * progress + currentState.foregroundTranslation
         let foregroundScale = (targetState.foregroundScale - sourceState.foregroundScale) * progress + currentState.foregroundScale
         let sourceViewFrame = (targetState.sourceViewFrame - sourceState.sourceViewFrame) * progress + currentState.sourceViewFrame
-        let sourceViewAlpha = (targetState.sourceViewAlpha - sourceState.sourceViewAlpha) * progress + currentState.sourceViewAlpha
+        let newProgress = (targetState.progress - sourceState.progress) * progress + currentState.progress
 
         let newState = ViewState(foregroundContainerCornerRadius: foregroundContainerCornerRadius,
                                  foregroundContainerFrame: CGRect(center: newCenter, size: foregroundContainerFrame.size),
+                                 foregroundContainerRotation: rotation,
                                  foregroundTranslation: foregroundTranslation,
-                                 foregroundRotation: rotation,
                                  foregroundScale: foregroundScale,
                                  sourceViewFrame: sourceViewFrame,
-                                 sourceViewAlpha: sourceViewAlpha)
+                                 progress: newProgress)
 
         apply(state: newState, animated: false, completion: nil)
     }

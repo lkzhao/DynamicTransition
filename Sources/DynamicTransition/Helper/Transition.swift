@@ -7,6 +7,10 @@ public protocol TransitionProvider {
     func transitionFor(presenting: Bool, otherViewController: UIViewController) -> Transition?
 }
 
+public protocol Transition {
+    func animateTransition(context: TransitionContext)
+}
+
 public protocol TransitionContext {
     var from: UIViewController { get }
     var to: UIViewController { get }
@@ -14,10 +18,6 @@ public protocol TransitionContext {
     var isPresenting: Bool { get }
 
     func completeTransition(_ didComplete: Bool)
-}
-
-public protocol Transition {
-    func animateTransition(context: TransitionContext)
 }
 
 public extension TransitionContext {

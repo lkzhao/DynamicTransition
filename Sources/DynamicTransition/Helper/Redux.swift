@@ -12,14 +12,14 @@ protocol EventStore<Event> {
     func send(_ event: Event)
 }
 
-protocol SimpleStoreReceiver<Event>: AnyObject {
+protocol EventReceiver<Event>: AnyObject {
     associatedtype Event
     func receive(_ event: Event)
 }
 
-class SimpleStore<Event>: EventStore {
-    weak var target: (any SimpleStoreReceiver<Event>)?
-    init(target: any SimpleStoreReceiver<Event>) {
+class Store<Event>: EventStore {
+    weak var target: (any EventReceiver<Event>)?
+    init(target: any EventReceiver<Event>) {
         self.target = target
     }
     func send(_ event: Event) {

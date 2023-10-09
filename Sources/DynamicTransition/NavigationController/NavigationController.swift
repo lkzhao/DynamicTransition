@@ -7,56 +7,7 @@
 import UIKit
 import BaseToolbox
 
-enum NavigationEvent {
-    enum NavigationAction {
-        case push(UIViewController)
-        case dismiss(UIViewController)
-        case pop
-        case set([UIViewController])
-
-        func target(from source: [UIViewController]) -> [UIViewController] {
-            switch self {
-            case .push(let vc):
-                return source + [vc]
-            case .dismiss(let vc):
-                guard let index = source.firstIndex(of: vc) else { return source }
-                return source[0..<max(1, index)].array
-            case .pop:
-                return source[0..<max(1, source.count - 1)].array
-            case .set(let vcs):
-                return vcs
-            }
-        }
-    }
-
-    case navigate(NavigationAction)
-    case didCompleteTransition
-    case didCancelTransition
-}
-
-class NavigationTransitionContext: TransitionContext {
-    var container: UIView
-    var from: UIViewController
-    var to: UIViewController
-    var store: any EventStore<NavigationEvent>
-
-    var isPresenting: Bool
-    var isInteractive: Bool = false
-
-    init(container: UIView, isPresenting: Bool, from: UIViewController, to: UIViewController, store: any EventStore<NavigationEvent>) {
-        self.container = container
-        self.isPresenting = isPresenting
-        self.from = from
-        self.to = to
-        self.store = store
-    }
-
-    func completeTransition(_ didComplete: Bool) {
-        store.send(didComplete ? .didCompleteTransition : .didCancelTransition)
-    }
-}
-
-open class NavigationController: UIViewController, SimpleStoreReceiver {
+open class NavigationController: UIViewController, EventReceiver {
     struct State {
         struct TransitionState {
             var context: NavigationTransitionContext
@@ -66,32 +17,95 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
         }
         var children: [UIViewController]
         var transition: TransitionState?
-        var nextAction: NavigationEvent.NavigationAction?
+        var nextAction: Event.NavigationAction?
     }
 
-    lazy var store = SimpleStore(target: self)
-    var state: State {
-        didSet {
-            view.setNeedsLayout()
+    enum Event {
+        enum NavigationAction {
+            case push(UIViewController)
+            case dismiss(UIViewController)
+            case pop
+            case popToRoot
+            case set([UIViewController])
+
+            func target(from source: [UIViewController]) -> [UIViewController] {
+                switch self {
+                case .push(let vc):
+                    return source + [vc]
+                case .dismiss(let vc):
+                    guard let index = source.firstIndex(of: vc) else {
+                        assertionFailure("The ViewController doesn't exist in the NavigationController's stack")
+                        return source
+                    }
+                    return source[0..<max(1, index)].array
+                case .pop:
+                    return source[0..<max(1, source.count - 1)].array
+                case .popToRoot:
+                    return [source.first!]
+                case .set(let vcs):
+                    guard !vcs.isEmpty else {
+                        assertionFailure("Cannot set empty view controllers to NavigationController")
+                        return source
+                    }
+                    return vcs
+                }
+            }
+        }
+
+        case navigate(NavigationAction)
+        case didCompleteTransition
+        case didCancelTransition
+    }
+
+    class NavigationTransitionContext: TransitionContext {
+        var container: UIView
+        var from: UIViewController
+        var to: UIViewController
+        var store: any EventStore<Event>
+
+        var isPresenting: Bool
+        var isInteractive: Bool = false
+
+        init(container: UIView, isPresenting: Bool, from: UIViewController, to: UIViewController, store: any EventStore<Event>) {
+            self.container = container
+            self.isPresenting = isPresenting
+            self.from = from
+            self.to = to
+            self.store = store
+        }
+
+        func completeTransition(_ didComplete: Bool) {
+            store.send(didComplete ? .didCompleteTransition : .didCancelTransition)
         }
     }
 
+    enum Action {
+        case none
+        case run(() -> ())
+    }
+
+    lazy var store = Store(target: self)
+
+    var state: State
+
     public var viewControllers: [UIViewController] {
-        return state.transition?.target ?? state.children
+        state.transition?.target ?? state.children
     }
 
     public init(rootViewController: UIViewController) {
         self.state = State(children: [rootViewController])
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
-        addVC(state.children.last!)
+        addChild(rootViewController)
+        view.addSubview(rootViewController.view)
+        rootViewController.didMove(toParent: self)
     }
 
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func receive(_ event: NavigationEvent) {
+    func receive(_ event: Event) {
         let action = process(event: event, state: &state)
         switch action {
         case .run(let block):
@@ -101,12 +115,7 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
         }
     }
 
-    enum Action {
-        case none
-        case run(() -> ())
-    }
-
-    func process(event: NavigationEvent, state: inout State) -> Action {
+    func process(event: Event, state: inout State) -> Action {
         switch event {
         case .navigate(let navigationAction):
             let source = state.children
@@ -128,14 +137,13 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, store: store)
             state.transition = State.TransitionState(context: context, transition: transition, source: source, target: target)
 
-            from.beginAppearanceTransition(false, animated: true)
-            to.beginAppearanceTransition(true, animated: true)
-
-            from.willMove(toParent: nil)
-            addChild(to)
-            view.addSubview(to.view)
-
             return .run {
+                from.beginAppearanceTransition(false, animated: true)
+                to.beginAppearanceTransition(true, animated: true)
+
+                from.willMove(toParent: nil)
+                self.addChild(to)
+                self.view.addSubview(to.view)
                 transition.animateTransition(context: context)
             }
         case .didCompleteTransition:
@@ -144,6 +152,7 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
             state.children = transitionState.target
             let nextAction = state.nextAction
             return .run { [store] in
+                self.view.setNeedsLayout()
                 transitionState.source.last?.view.removeFromSuperview()
                 transitionState.source.last?.removeFromParent()
                 transitionState.target.last?.didMove(toParent: self)
@@ -160,6 +169,7 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
             state.children = transitionState.source
             let nextAction = state.nextAction
             return .run { [store] in
+                self.view.setNeedsLayout()
                 transitionState.target.last?.beginAppearanceTransition(false, animated: false)
                 transitionState.target.last?.view.removeFromSuperview()
                 transitionState.target.last?.removeFromParent()
@@ -180,11 +190,10 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
         topVC.view.frameWithoutTransform = view.bounds
     }
 
-    func addVC(_ vc: UIViewController) {
-        guard vc.parent != self else { return }
-        addChild(vc)
-        view.addSubview(vc.view)
-        vc.didMove(toParent: self)
+    // MARK: - navigation methods
+
+    open func pushViewController(_ viewController: UIViewController, animated: Bool) {
+        store.send(.navigate(.push(viewController)))
     }
 
     open func popViewController(animated: Bool) {
@@ -192,13 +201,18 @@ open class NavigationController: UIViewController, SimpleStoreReceiver {
     }
 
     open func popToRootViewController(animated: Bool) {
-        guard let vc = viewControllers.first else { return }
-        store.send(.navigate(.dismiss(vc)))
+        store.send(.navigate(.popToRoot))
     }
 
-    open func push(_ viewController: UIViewController, animated: Bool) {
-        store.send(.navigate(.push(viewController)))
+    open func dismissToViewController(_ viewController: UIViewController, animated: Bool) {
+        store.send(.navigate(.dismiss(viewController)))
     }
+
+    open func setViewControllers(_ viewControllers: [UIViewController], animated: Bool) {
+        store.send(.navigate(.set(viewControllers)))
+    }
+
+    // MARK: - override child UIViewController methods
 
     open override var childForStatusBarStyle: UIViewController? {
         viewControllers.last

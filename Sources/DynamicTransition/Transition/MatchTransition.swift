@@ -24,44 +24,7 @@ public struct MatchTransitionOptions {
     /// If `true`, the `verticalDismissGestureRecognizer` & `horizontalDismissGestureRecognizer`  will be automatically added to the foreground view during presentation
     public var automaticallyAddDismissGestureRecognizer: Bool = true
 
-    /// How much the foreground container moves when user drag across screen. This can be any value above or equal to 0.
-    /// Default is 0.5, which means when user drag across the screen from left to right, the container move 50% of the screen.
-    public var dragTranslationFactor: CGPoint = CGPoint(x: 0.5, y: 0.5)
-
     public var onDragStart: ((MatchTransition) -> ())?
-}
-
-extension MixAnimation {
-    func updateTo(value: Value, animated: Bool, stiffness: Double? = nil, damping: Double? = nil, threshold: CGFloat = 0.001, completion: ((Bool) -> ())? = nil) {
-        if animated {
-            self.animateTo(value, stiffness: stiffness, damping: damping, threshold: threshold, completionHandler: completion)
-        } else {
-            self.setTo(value)
-            completion?(true)
-        }
-    }
-}
-extension Yaal where Base: UIView {
-    public var frameWithoutTransform: MixAnimation<CGRect> {
-        return animationFor(key: "frameWithoutTransform",
-                            getter: { [weak base] in base?.frameWithoutTransform },
-                            setter: { [weak base] in base?.frameWithoutTransform = $0 })
-    }
-    public var size: MixAnimation<CGSize> {
-        return animationFor(key: "size",
-                            getter: { [weak base] in base?.bounds.size },
-                            setter: { [weak base] in base?.bounds.size = $0 })
-    }
-    public var cornerRadius: MixAnimation<CGFloat> {
-        return animationFor(key: "cornerRadius",
-                            getter: { [weak base] in base?.cornerRadius },
-                            setter: { [weak base] in base?.cornerRadius = $0 })
-    }
-    public var shadowOpacity: MixAnimation<CGFloat> {
-        return animationFor(key: "shadowOpacity",
-                            getter: { [weak base] in base?.shadowOpacity },
-                            setter: { [weak base] in base?.shadowOpacity = $0 })
-    }
 }
 
 /// A Transition that matches two items and transitions between them.
@@ -115,6 +78,9 @@ open class MatchTransition: NSObject, Transition {
         }
         let front = context.foreground.view!
         startTime = CACurrentMediaTime()
+        if options.canDismissVertically != options.canDismissHorizontally {
+            isTransitioningVertically = options.canDismissVertically
+        }
 
         CATransaction.begin()
         let runner = MatchTransitionRunner(context: context,
@@ -167,14 +133,9 @@ open class MatchTransition: NSObject, Transition {
         func progressFrom(offset: CGPoint) -> CGFloat {
             guard let runner else { return 0 }
             let container = runner.container
-            if runner.matchedSourceView != nil {
-                let maxAxis = max(container.bounds.width, container.bounds.height)
-                let progress = (offset.x / maxAxis + offset.y / maxAxis) * 1.5
-                return runner.isPresenting ? -progress : progress
-            } else {
-                let progress = isTransitioningVertically ? offset.y / container.bounds.height : offset.x / container.bounds.width
-                return runner.isPresenting ? -progress : progress
-            }
+            let maxAxis = max(container.bounds.width, container.bounds.height)
+            let progress = (offset.x / maxAxis + offset.y / maxAxis) * 1.5
+            return runner.isPresenting ? -progress : progress
         }
         switch gr.state {
         case .began:
@@ -192,13 +153,25 @@ open class MatchTransition: NSObject, Transition {
             gr.setTranslation(.zero, in: nil)
             totalTranslation += translation
             let progress = progressFrom(offset: translation)
-            let newCenter = runner.foregroundContainerView.center + translation * options.dragTranslationFactor
-            let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
-            runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
+            if runner.isMatched {
+                let newCenter = runner.foregroundContainerView.center + translation * 0.5
+                let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
+                runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
+            } else {
+                if options.canDismissVertically, options.canDismissHorizontally {
+                    let newCenter = runner.foregroundContainerView.center + translation
+                    let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
+                    runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
+                } else if options.canDismissVertically {
+                    runner.add(progress: progress, newCenter: runner.foregroundContainerView.center + CGPoint(x: 0, y: translation.y), rotation: 0)
+                } else {
+                    runner.add(progress: progress, newCenter: runner.foregroundContainerView.center + CGPoint(x: translation.x, y: 0), rotation: 0)
+                }
+            }
         default:
             guard let runner else { return }
             let velocity = gr.velocity(in: nil)
-            let translationPlusVelocity = totalTranslation + velocity
+            let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x + translationPlusVelocity.y > 80
             let shouldFinish = runner.isPresenting ? !shouldDismiss : shouldDismiss
             if shouldDismiss {
@@ -207,7 +180,22 @@ open class MatchTransition: NSObject, Transition {
                 runner.foregroundContainerView.isUserInteractionEnabled = false
                 runner.overlayView.isUserInteractionEnabled = false
             }
-            runner.foregroundContainerView.yaal.center.velocity.value = velocity
+            if runner.isMatched {
+                runner.foregroundContainerView.yaal.center.velocity.value = velocity
+            } else {
+                if options.canDismissVertically, options.canDismissHorizontally {
+                    runner.foregroundContainerView.yaal.center.velocity.value = velocity
+                    let angle = translationPlusVelocity / runner.container.bounds.size
+                    let targetOffset = angle / angle.distance(.zero) * 1.4 * runner.container.bounds.size
+                    let targetRotation = runner.foregroundContainerView.yaal.rotation.value.value + translationPlusVelocity.x * 0.0001
+                    runner.dismissedState.foregroundContainerFrame = runner.container.bounds + targetOffset
+                    runner.dismissedState.foregroundContainerRotation = targetRotation
+                } else if options.canDismissVertically {
+                    runner.foregroundContainerView.yaal.center.velocity.value = CGPoint(x: 0, y: velocity.y)
+                } else {
+                    runner.foregroundContainerView.yaal.center.velocity.value = CGPoint(x: velocity.x, y: 0)
+                }
+            }
             runner.completeTransition(shouldFinish: shouldFinish)
         }
     }
@@ -215,18 +203,20 @@ open class MatchTransition: NSObject, Transition {
 
 extension MatchTransition: UIGestureRecognizerDelegate {
     open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-//        guard gestureRecognizer.view?.canBeDismissed == true else { return false }
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
         if gestureRecognizer == interruptibleVerticalDismissGestureRecognizer || gestureRecognizer == verticalDismissGestureRecognizer {
-            let vertical = options.canDismissVertically && velocity.y > abs(velocity.x)
-            isTransitioningVertically = true
-            return vertical
-        } else {
-            let horizontal = options.canDismissHorizontally && velocity.x > abs(velocity.y)
-            isTransitioningVertically = false
-            return horizontal
+            if options.canDismissVertically && velocity.y > abs(velocity.x) {
+                isTransitioningVertically = true
+                return true
+            }
+        } else if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
+            if options.canDismissHorizontally && velocity.x > abs(velocity.y) {
+                isTransitioningVertically = false
+                return true
+            }
         }
+        return false
     }
 
     open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -237,74 +227,5 @@ extension MatchTransition: UIGestureRecognizerDelegate {
             return true
         }
         return false
-    }
-}
-
-
-class MatchTransitionContainerView: UIView {
-    let contentView = UIView()
-
-    override var cornerRadius: CGFloat {
-        didSet {
-            contentView.cornerRadius = cornerRadius
-        }
-    }
-
-    override var frameWithoutTransform: CGRect {
-        didSet {
-            recalculateShadowPath()
-        }
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        addSubview(contentView)
-        cornerCurve = .continuous
-        contentView.cornerCurve = .continuous
-        contentView.autoresizingMask = []
-        contentView.autoresizesSubviews = false
-        contentView.clipsToBounds = true
-        shadowColor = UIColor(dark: .black, light: .black.withAlphaComponent(0.4))
-        shadowRadius = 36
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        contentView.frame = bounds
-    }
-
-    func recalculateShadowPath() {
-        shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: cornerRadius)
-    }
-}
-
-protocol Arithmetic {
-    static func +(lhs: Self, rhs: Self) -> Self
-    static func -(lhs: Self, rhs: Self) -> Self
-    static func *(lhs: Self, rhs: Self) -> Self
-    static func /(lhs: Self, rhs: Self) -> Self
-    static func *(lhs: Self, rhs: CGFloat) -> Self
-    static func /(lhs: Self, rhs: CGFloat) -> Self
-}
-
-extension CGFloat : Arithmetic {}
-extension CGSize : Arithmetic {}
-extension CGPoint : Arithmetic {}
-extension CGRect : Arithmetic {
-    static func + (lhs: Self, rhs: Self) -> Self {
-        CGRect(origin: lhs.origin + rhs.origin, size: lhs.size + rhs.size)
-    }
-    static func - (lhs: Self, rhs: Self) -> Self {
-        CGRect(origin: lhs.origin - rhs.origin, size: lhs.size - rhs.size)
-    }
-    static func * (lhs: CGRect, rhs: CGRect) -> CGRect {
-        CGRect(origin: lhs.origin * rhs.origin, size: lhs.size * rhs.size)
-    }
-    static func / (lhs: CGRect, rhs: CGRect) -> CGRect {
-        CGRect(origin: lhs.origin / rhs.origin, size: lhs.size / rhs.size)
     }
 }

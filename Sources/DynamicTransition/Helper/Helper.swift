@@ -9,23 +9,10 @@ import Foundation
 import UIKit
 @_spi(CustomPresentation) import BaseToolbox
 
-public extension UIResponder {
-    @objc var parentNavigationController: NavigationController? {
-        var responder: UIResponder? = self
-        while let current = responder {
-            if let current = current as? NavigationController {
-                return current
-            }
-            responder = current.next
-        }
-        return nil
-    }
-}
-
 func setupCustomPresentation() {
     BaseToolbox.customPushMethod = { (view, viewController) in
         if let navigationController = view.parentNavigationController {
-            navigationController.push(viewController, animated: true)
+            navigationController.pushViewController(viewController, animated: true)
         } else if let navigationController = view.parentViewController?.navigationController {
             navigationController.pushViewController(viewController, animated: true)
         }
