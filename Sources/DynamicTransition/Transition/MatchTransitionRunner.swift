@@ -65,6 +65,7 @@ class MatchTransitionRunner {
         foreground.view.frame = container.bounds
         foreground.view.setNeedsLayout()
         foreground.view.layoutIfNeeded()
+        foregroundContainerView.lockSafeAreaInsets = true
 
         let matchedDestinationView = context.foreground.findObjectMatchType(MatchTransitionDelegate.self)?
             .matchedViewFor(transition: context, otherViewController: context.background)
@@ -220,6 +221,7 @@ class MatchTransitionRunner {
         completingTransition = nil
         matchedSourceView?.isHidden = false
         overlayView.removeFromSuperview()
+        foregroundContainerView.lockSafeAreaInsets = false
         foregroundContainerView.removeFromSuperview()
         context.completeTransition(finished)
     }

@@ -72,3 +72,38 @@ extension UIViewController {
         return nil
     }
 }
+
+extension UIView {
+    private static var lockedSafeAreaInsets: [UIView: UIEdgeInsets] = [:]
+
+    private static let swizzleSafeAreaInsets: Void = {
+        guard let originalMethod = class_getInstanceMethod(UIView.self, #selector(getter: safeAreaInsets)),
+              let swizzledMethod = class_getInstanceMethod(UIView.self, #selector(getter: swizzled_safeAreaInsets))
+        else { return }
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+    }()
+
+    var lockSafeAreaInsets: Bool {
+        get {
+            Self.lockedSafeAreaInsets[self] != nil
+        }
+        set {
+            _ = UIView.swizzleSafeAreaInsets
+            Self.lockedSafeAreaInsets[self] = newValue ? safeAreaInsets : nil
+        }
+    }
+
+    @objc var swizzled_safeAreaInsets: UIEdgeInsets {
+        if !Self.lockedSafeAreaInsets.isEmpty,
+            let lockedInsetSuperview = superviewPassing(test: { Self.lockedSafeAreaInsets[$0] != nil }),
+            let superviewInset = Self.lockedSafeAreaInsets[lockedInsetSuperview] {
+            let frame = lockedInsetSuperview.convert(bounds, from: self)
+            let superviewBounds = lockedInsetSuperview.bounds.inset(by: superviewInset)
+            return UIEdgeInsets(top: max(0, superviewBounds.minY - frame.minY),
+                                left: max(0, superviewBounds.minX - frame.minX),
+                                bottom: max(0, frame.maxY - superviewBounds.maxY),
+                                right: max(0, frame.maxX - superviewBounds.maxX))
+        }
+        return self.swizzled_safeAreaInsets
+    }
+}
