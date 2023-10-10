@@ -36,6 +36,7 @@ class MatchTransitionRunner {
     var dismissedState: ViewState = ViewState()
 
     var scrollViewObserver: Any?
+    var animationGroup: AnimationTransactionGroup?
 
     var isMatched: Bool {
         matchedSourceView != nil
@@ -154,29 +155,24 @@ class MatchTransitionRunner {
     func apply(state: ViewState, animated: Bool, completion: ((Bool) -> Void)?) {
         let stiffness: Double = 350
         let damping: Double = 30
+        AnimationTransactionGroup.begin(completionBlock: completion)
         foregroundContainerView.yaal.cornerRadius.updateTo(value: state.foregroundContainerCornerRadius, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.size.updateTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
-        foregroundContainerView.yaal.center.updateTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0, completion: completion)
+        foregroundContainerView.yaal.size.updateTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.center.updateTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping)
         foregroundContainerView.yaal.rotation.updateTo(value: state.foregroundContainerRotation, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundView.yaal.translation.updateTo(value: state.foregroundTranslation, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
+        foregroundView.yaal.translation.updateTo(value: state.foregroundTranslation, animated: animated, stiffness: stiffness, damping: damping)
         foregroundView.yaal.scale.updateTo(value: state.foregroundScale, animated: animated, stiffness: stiffness, damping: damping)
-        sourceViewSnapshot?.yaal.size.updateTo(value: state.sourceViewFrame.size, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
-        sourceViewSnapshot?.yaal.center.updateTo(value: state.sourceViewFrame.center, animated: animated, stiffness: stiffness, damping: damping, threshold: 1.0)
+        sourceViewSnapshot?.yaal.size.updateTo(value: state.sourceViewFrame.size, animated: animated, stiffness: stiffness, damping: damping)
+        sourceViewSnapshot?.yaal.center.updateTo(value: state.sourceViewFrame.center, animated: animated, stiffness: stiffness, damping: damping)
         sourceViewSnapshot?.yaal.alpha.updateTo(value: 1 - state.progress, animated: animated, stiffness: stiffness, damping: damping)
         overlayView.yaal.alpha.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
         foregroundContainerView.yaal.shadowOpacity.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
+        animationGroup = AnimationTransactionGroup.commit()
     }
 
     func pause() {
         completingTransition = nil
-        foregroundContainerView.yaal.cornerRadius.stop()
-        foregroundContainerView.yaal.size.stop()
-        foregroundContainerView.yaal.center.stop()
-        foregroundView.yaal.translation.stop()
-        foregroundView.yaal.scale.stop()
-        sourceViewSnapshot?.yaal.size.stop()
-        sourceViewSnapshot?.yaal.center.stop()
-        sourceViewSnapshot?.yaal.alpha.stop()
+        animationGroup?.stop()
     }
 
     func currentState() -> ViewState {
@@ -219,6 +215,7 @@ class MatchTransitionRunner {
         }
         scrollViewObserver = nil
         completingTransition = nil
+        animationGroup = nil
         matchedSourceView?.isHidden = false
         overlayView.removeFromSuperview()
         foregroundContainerView.lockSafeAreaInsets = false

@@ -32,12 +32,89 @@ extension Yaal where Base: UIView {
 }
 
 extension MixAnimation {
-    func updateTo(value: Value, animated: Bool, stiffness: Double? = nil, damping: Double? = nil, threshold: CGFloat = 0.001, completion: ((Bool) -> ())? = nil) {
+    func updateTo(value: Value, animated: Bool, stiffness: Double? = nil, damping: Double? = nil) {
+        let anim = MixAnimationUpdateState(animation: self, value: value, animated: animated, stiffness: stiffness, damping: damping)
+        AnimationTransactionGroup.add(anim)
+    }
+}
+
+protocol AnimationUpdateState {
+    func run(completion: ((Bool) -> ())?)
+    func stop()
+}
+
+struct MixAnimationUpdateState<Value: VectorConvertible>: AnimationUpdateState {
+    var animation: MixAnimation<Value>
+    var value: Value
+    var animated: Bool
+    var stiffness: Double?
+    var damping: Double?
+    func run(completion: ((Bool) -> Void)?) {
         if animated {
-            self.animateTo(value, stiffness: stiffness, damping: damping, threshold: threshold, completionHandler: completion)
+            let threshold = max(1, animation.value.vector.distance(between: value.vector)) * 0.005
+            animation.animateTo(value, stiffness: stiffness, damping: damping, threshold: threshold) { result in
+                if !result {
+                    print("Animation \(self) cancelled")
+                }
+                completion?(result)
+            }
         } else {
-            self.setTo(value)
+            animation.setTo(value)
             completion?(true)
+        }
+    }
+    func stop() {
+        animation.stop()
+    }
+}
+
+class AnimationTransactionGroup {
+    private var completionBlock: ((Bool) -> Void)?
+    private var animations: [AnimationUpdateState] = []
+
+    static var currentTransaction: AnimationTransactionGroup?
+
+    private init() {
+    }
+
+    func stop() {
+        for animation in animations {
+            animation.stop()
+        }
+    }
+
+    static func begin(completionBlock: ((Bool) -> Void)?) {
+        currentTransaction = AnimationTransactionGroup()
+        currentTransaction?.completionBlock = completionBlock
+    }
+
+    static func commit() -> AnimationTransactionGroup? {
+        guard let currentTransaction else { return nil }
+        self.currentTransaction = nil
+        guard !currentTransaction.animations.isEmpty else {
+            currentTransaction.completionBlock?(true)
+            return nil
+        }
+        var allFinished = true
+        let dispatchGroup = DispatchGroup()
+        for animation in currentTransaction.animations {
+            dispatchGroup.enter()
+            animation.run { finished in
+                allFinished = allFinished && finished
+                dispatchGroup.leave()
+            }
+        }
+        dispatchGroup.notify(queue: .main) {
+            currentTransaction.completionBlock?(allFinished)
+        }
+        return currentTransaction
+    }
+
+    static func add(_ anim: AnimationUpdateState) {
+        if let currentTransaction {
+            currentTransaction.animations.append(anim)
+        } else {
+            anim.run(completion: nil)
         }
     }
 }
