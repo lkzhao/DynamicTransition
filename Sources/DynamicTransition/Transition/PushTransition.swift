@@ -7,6 +7,7 @@
 
 import UIKit
 import BaseToolbox
+import Motion
 
 open class PushTransition: NSObject, Transition {
     open lazy var horizontalDismissGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
@@ -50,8 +51,8 @@ open class PushTransition: NSObject, Transition {
         var animator = TransitionAnimator { position in
             self.didCompleteTransitionAnimation(position: position)
         }
-        animator.add(animation: foregroundView.yaal.translationX, presentedValue: 0, dismissedValue: container.bounds.width)
-        animator.add(animation: overlayView.yaal.alpha, presentedValue: 1, dismissedValue: 0)
+        animator.add(view: foregroundView, keyPath: \.translationX, presentedValue: 0, dismissedValue: container.bounds.width)
+        animator.add(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
         animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
 
         self.context = context
@@ -133,5 +134,16 @@ extension PushTransition: UIGestureRecognizerDelegate {
             return true
         }
         return false
+    }
+}
+
+extension UIView {
+    var translationX: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.translation.x") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.translation.x")
+        }
     }
 }

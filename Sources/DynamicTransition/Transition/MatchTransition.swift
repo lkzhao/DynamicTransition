@@ -15,15 +15,6 @@ public protocol MatchTransitionDelegate {
 }
 
 public struct MatchTransitionOptions {
-    /// Allow the transition to dismiss vertically via its `verticalDismissGestureRecognizer`
-    public var canDismissVertically = true
-
-    /// Allow the transition to dismiss horizontally via its `horizontalDismissGestureRecognizer`
-    public var canDismissHorizontally = true
-
-    /// If `true`, the `verticalDismissGestureRecognizer` & `horizontalDismissGestureRecognizer`  will be automatically added to the foreground view during presentation
-    public var automaticallyAddDismissGestureRecognizer: Bool = true
-
     public var onDragStart: ((MatchTransition) -> ())?
 }
 
@@ -78,9 +69,6 @@ open class MatchTransition: NSObject, Transition {
         }
         let front = context.foreground.view!
         startTime = CACurrentMediaTime()
-        if options.canDismissVertically != options.canDismissHorizontally {
-            isTransitioningVertically = options.canDismissVertically
-        }
 
         CATransaction.begin()
         let runner = MatchTransitionRunner(context: context,
@@ -95,10 +83,6 @@ open class MatchTransition: NSObject, Transition {
             runner.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
             verticalDismissGestureRecognizer.isEnabled = false
             horizontalDismissGestureRecognizer.isEnabled = false
-            if options.automaticallyAddDismissGestureRecognizer {
-                front.addGestureRecognizer(verticalDismissGestureRecognizer)
-                front.addGestureRecognizer(horizontalDismissGestureRecognizer)
-            }
             runner.apply(state: runner.dismissedState, animated: false, completion: nil)
         } else {
             runner.apply(state: runner.presentedState, animated: false, completion: nil)
@@ -158,15 +142,9 @@ open class MatchTransition: NSObject, Transition {
                 let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
                 runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
             } else {
-                if options.canDismissVertically, options.canDismissHorizontally {
-                    let newCenter = runner.foregroundContainerView.center + translation
-                    let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
-                    runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
-                } else if options.canDismissVertically {
-                    runner.add(progress: progress, newCenter: runner.foregroundContainerView.center + CGPoint(x: 0, y: translation.y), rotation: 0)
-                } else {
-                    runner.add(progress: progress, newCenter: runner.foregroundContainerView.center + CGPoint(x: translation.x, y: 0), rotation: 0)
-                }
+                let newCenter = runner.foregroundContainerView.center + translation
+                let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
+                runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
             }
         default:
             guard let runner else { return }
@@ -183,18 +161,12 @@ open class MatchTransition: NSObject, Transition {
             if runner.isMatched {
                 runner.foregroundContainerView.yaal.center.velocity.value = velocity
             } else {
-                if options.canDismissVertically, options.canDismissHorizontally {
-                    runner.foregroundContainerView.yaal.center.velocity.value = velocity
-                    let angle = translationPlusVelocity / runner.container.bounds.size
-                    let targetOffset = angle / angle.distance(.zero) * 1.4 * runner.container.bounds.size
-                    let targetRotation = runner.foregroundContainerView.yaal.rotation.value.value + translationPlusVelocity.x * 0.0001
-                    runner.dismissedState.foregroundContainerFrame = runner.container.bounds + targetOffset
-                    runner.dismissedState.foregroundContainerRotation = targetRotation
-                } else if options.canDismissVertically {
-                    runner.foregroundContainerView.yaal.center.velocity.value = CGPoint(x: 0, y: velocity.y)
-                } else {
-                    runner.foregroundContainerView.yaal.center.velocity.value = CGPoint(x: velocity.x, y: 0)
-                }
+                runner.foregroundContainerView.yaal.center.velocity.value = velocity
+                let angle = translationPlusVelocity / runner.container.bounds.size
+                let targetOffset = angle / angle.distance(.zero) * 1.4 * runner.container.bounds.size
+                let targetRotation = runner.foregroundContainerView.yaal.rotation.value.value + translationPlusVelocity.x * 0.0001
+                runner.dismissedState.foregroundContainerFrame = runner.container.bounds + targetOffset
+                runner.dismissedState.foregroundContainerRotation = targetRotation
             }
             runner.completeTransition(shouldFinish: shouldFinish)
         }
@@ -206,12 +178,12 @@ extension MatchTransition: UIGestureRecognizerDelegate {
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
         if gestureRecognizer == interruptibleVerticalDismissGestureRecognizer || gestureRecognizer == verticalDismissGestureRecognizer {
-            if options.canDismissVertically && velocity.y > abs(velocity.x) {
+            if velocity.y > abs(velocity.x) {
                 isTransitioningVertically = true
                 return true
             }
         } else if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
-            if options.canDismissHorizontally && velocity.x > abs(velocity.y) {
+            if velocity.x > abs(velocity.y) {
                 isTransitioningVertically = false
                 return true
             }

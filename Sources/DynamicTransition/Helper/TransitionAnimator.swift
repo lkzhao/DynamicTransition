@@ -5,8 +5,8 @@
 //  Created by Luke Zhao on 10/12/23.
 //
 
-import YetAnotherAnimationLibrary
 import UIKit
+import Motion
 
 enum TransitionEndPosition {
     case dismissed
@@ -15,45 +15,67 @@ enum TransitionEndPosition {
 
 protocol AnyStateAnimator {
     func seekTo(position: TransitionEndPosition)
-    func animateTo(position: TransitionEndPosition, completion: @escaping (Bool) -> Void)
+    func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void)
     func pause()
     func shift(progress: CGFloat)
 }
 
-private struct StateAnimator<Value: VectorConvertible>: AnyStateAnimator {
-    var animation: MixAnimation<Value>
+extension SupportedSIMD where Scalar: SupportedScalar {
+    func distance(between: Self) -> Scalar {
+        var result = Scalar.zero
+        for i in 0..<scalarCount {
+            result += abs(self[i] - between[i])
+        }
+        return result
+    }
+}
+
+extension SIMDRepresentable where SIMDType.Scalar: SupportedScalar {
+    func distance(between other: Self) -> SIMDType.Scalar {
+        simdRepresentation().distance(between: other.simdRepresentation())
+    }
+}
+
+struct AnimatorID<View: UIView, Value: SIMDRepresentable>: Hashable {
+    let view: View
+    let keypath: WritableKeyPath<View, Value>
+}
+
+private struct StateAnimator<Value: SIMDRepresentable>: AnyStateAnimator where Value.SIMDType.Scalar == CGFloat.NativeType {
+
+    var animation: Motion.SpringAnimation<Value>
 
     var presentedValue: Value
     var dismissedValue: Value
     var currentValue: Value {
         get {
-            animation.value.value
+            animation.value
         }
-        set {
-            animation.setTo(newValue)
+        nonmutating set {
+            animation.updateValue(to: newValue, postValueChanged: true)
         }
     }
     var currentVelocity: Value {
         get {
-            animation.velocity.value
+            animation.velocity
         }
-        set {
-            animation.velocity.value = newValue
+        nonmutating set {
+            animation.velocity = newValue
         }
     }
-
-    var stiffness: Double?
-    var damping: Double?
 
     func seekTo(position: TransitionEndPosition) {
-        let value = position == .presented ? presentedValue : dismissedValue
-        animation.setTo(value)
+        currentValue = position == .presented ? presentedValue : dismissedValue
     }
 
-    func animateTo(position: TransitionEndPosition, completion: @escaping (Bool) -> Void) {
+    func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void) {
         let value = position == .presented ? presentedValue : dismissedValue
-        let threshold = max(1, animation.value.vector.distance(between: value.vector)) * 0.005
-        animation.animateTo(value, stiffness: stiffness, damping: damping, threshold: threshold, completionHandler: completion)
+        let threshold = max(1, animation.value.distance(between: value)) * 0.005
+        animation.configure(stiffness: 300, damping: 30)
+        animation.toValue = value
+        animation.resolvingEpsilon = (threshold as? Value.SIMDType.EpsilonType) ?? 0.01
+        animation.completion = completion
+        animation.start()
     }
 
     func pause() {
@@ -61,14 +83,13 @@ private struct StateAnimator<Value: VectorConvertible>: AnyStateAnimator {
     }
 
     func shift(progress: CGFloat) {
-        let newValueVector = progress * (presentedValue.vector - dismissedValue.vector) + currentValue.vector
-        let newValue = Value.from(vector: newValueVector)
-        animation.setTo(newValue)
+        let newValueVector = Double(progress) * (presentedValue.simdRepresentation() - dismissedValue.simdRepresentation()) + currentValue.simdRepresentation()
+        currentValue = Value(newValueVector)
     }
 }
 
 struct TransitionAnimator {
-    private var children: [Animation: AnyStateAnimator]
+    private var children: [AnyHashable: AnyStateAnimator]
     private var completion: (TransitionEndPosition) -> Void
 
     init(completion: @escaping (TransitionEndPosition) -> Void) {
@@ -76,13 +97,20 @@ struct TransitionAnimator {
         self.completion = completion
     }
 
-    mutating func add<Value: VectorConvertible>(animation: MixAnimation<Value>, presentedValue: Value, dismissedValue: Value, stiffness: Double? = 300, damping: Double? = 35) {
-        let animator = StateAnimator(animation: animation, presentedValue: presentedValue, dismissedValue: dismissedValue, stiffness: stiffness, damping: damping)
-        children[animation] = animator
+    mutating func add<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: WritableKeyPath<View, Value>, presentedValue: Value, dismissedValue: Value) where Value.SIMDType.Scalar == CGFloat.NativeType {
+        let animation = SpringAnimation(initialValue: view[keyPath: keyPath])
+        animation.configure(stiffness: 300, damping: 30)
+        animation.onValueChanged { [weak view] value in
+            view?[keyPath: keyPath] = value
+        }
+        let animator = StateAnimator(animation: animation, presentedValue: presentedValue, dismissedValue: dismissedValue)
+        let animatorId = AnimatorID(view: view, keypath: keyPath)
+        children[animatorId] = animator
     }
 
-    private func stateAnimatorFor<Value: VectorConvertible>(animation: MixAnimation<Value>) -> StateAnimator<Value>? {
-        children[animation] as? StateAnimator<Value>
+    private func animatorFor<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: WritableKeyPath<View, Value>) -> StateAnimator<Value>? {
+        let animatorId = AnimatorID(view: view, keypath: keyPath)
+        return children[animatorId] as? StateAnimator<Value>
     }
 
     func seekTo(position: TransitionEndPosition) {
@@ -92,19 +120,15 @@ struct TransitionAnimator {
     }
 
     func animateTo(position: TransitionEndPosition) {
-        var allFinished = true
         let dispatchGroup = DispatchGroup()
         for child in children.values {
             dispatchGroup.enter()
-            child.animateTo(position: position) { finished in
-                allFinished = allFinished && finished
+            child.animateTo(position: position) {
                 dispatchGroup.leave()
             }
         }
         dispatchGroup.notify(queue: .main) {
-            if allFinished {
-                completion(position)
-            }
+            completion(position)
         }
     }
 
