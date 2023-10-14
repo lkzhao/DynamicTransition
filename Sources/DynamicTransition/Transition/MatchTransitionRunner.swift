@@ -7,6 +7,7 @@
 
 import UIKit
 import BaseToolbox
+import YetAnotherAnimationLibrary
 
 class MatchTransitionRunner {
     let context: TransitionContext
@@ -36,10 +37,15 @@ class MatchTransitionRunner {
     var dismissedState: ViewState = ViewState()
 
     var scrollViewObserver: Any?
-    var animationGroup: AnimationTransactionGroup?
+    var animationGroup: TransitionTransaction?
 
     var isMatched: Bool {
         matchedSourceView != nil
+    }
+
+    var progressAnimation = MixAnimation<CGFloat>(value: AnimationProperty<CGFloat>(value: 0))
+    var progress: CGFloat {
+        progressAnimation.value.value
     }
 
     init(context: TransitionContext,
@@ -88,6 +94,20 @@ class MatchTransitionRunner {
         }
 
         calculatTargetStates()
+
+        progressAnimation.value.changes.addListener { [weak self] old, new in
+            self?.progressDidChange()
+        }
+    }
+
+    func progressDidChange() {
+//        print("Progress: \(progress)")
+        sourceViewSnapshot?.alpha = 1 - progress
+        overlayView.alpha = progress
+        foregroundContainerView.shadowOpacity = progress
+
+        let cornerRadius = (presentedState.foregroundContainerCornerRadius - dismissedState.foregroundContainerCornerRadius) * progress + dismissedState.foregroundContainerCornerRadius
+        foregroundContainerView.cornerRadius = cornerRadius
     }
 
     func calculatTargetStates() {
@@ -155,19 +175,17 @@ class MatchTransitionRunner {
     func apply(state: ViewState, animated: Bool, completion: ((Bool) -> Void)?) {
         let stiffness: Double = 350
         let damping: Double = 30
-        AnimationTransactionGroup.begin(completionBlock: completion)
-        foregroundContainerView.yaal.cornerRadius.updateTo(value: state.foregroundContainerCornerRadius, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.size.updateTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.center.updateTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.rotation.updateTo(value: state.foregroundContainerRotation, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundView.yaal.translation.updateTo(value: state.foregroundTranslation, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundView.yaal.scale.updateTo(value: state.foregroundScale, animated: animated, stiffness: stiffness, damping: damping)
-        sourceViewSnapshot?.yaal.size.updateTo(value: state.sourceViewFrame.size, animated: animated, stiffness: stiffness, damping: damping)
-        sourceViewSnapshot?.yaal.center.updateTo(value: state.sourceViewFrame.center, animated: animated, stiffness: stiffness, damping: damping)
-        sourceViewSnapshot?.yaal.alpha.updateTo(value: 1 - state.progress, animated: animated, stiffness: stiffness, damping: damping)
-        overlayView.yaal.alpha.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
-        foregroundContainerView.yaal.shadowOpacity.updateTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
-        animationGroup = AnimationTransactionGroup.commit()
+        TransitionTransaction.begin(completionBlock: completion)
+        progressAnimation.transitionTo(value: state.progress, animated: animated, stiffness: stiffness, damping: damping)
+//        foregroundContainerView.yaal.corerRadius.updateTo(value: state.foregroundContainerCornerRadius, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.size.transitionTo(value: state.foregroundContainerFrame.size, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.center.transitionTo(value: state.foregroundContainerFrame.center, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundContainerView.yaal.rotation.transitionTo(value: state.foregroundContainerRotation, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundView.yaal.translation.transitionTo(value: state.foregroundTranslation, animated: animated, stiffness: stiffness, damping: damping)
+        foregroundView.yaal.scale.transitionTo(value: state.foregroundScale, animated: animated, stiffness: stiffness, damping: damping)
+        sourceViewSnapshot?.yaal.size.transitionTo(value: state.sourceViewFrame.size, animated: animated, stiffness: stiffness, damping: damping)
+        sourceViewSnapshot?.yaal.center.transitionTo(value: state.sourceViewFrame.center, animated: animated, stiffness: stiffness, damping: damping)
+        animationGroup = TransitionTransaction.commit()
     }
 
     func pause() {
@@ -182,7 +200,7 @@ class MatchTransitionRunner {
                   foregroundTranslation: foregroundView.yaal.translation.value.value,
                   foregroundScale: foregroundView.yaal.scale.value.value,
                   sourceViewFrame: sourceViewSnapshot?.frameWithoutTransform ?? .zero,
-                  progress: overlayView.alpha)
+                  progress: progress)
     }
 
     func add(progress: CGFloat, newCenter: CGPoint, rotation: CGFloat) {

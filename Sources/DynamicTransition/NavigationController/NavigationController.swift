@@ -133,7 +133,7 @@ open class NavigationController: UIViewController, EventReceiver {
             let isPresenting = target.count > source.count
             let foreground = isPresenting ? to : from
             let background = isPresenting ? from : to
-            let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? MatchTransition()
+            let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? PushTransition()
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, store: store)
             state.transition = State.TransitionState(context: context, transition: transition, source: source, target: target)
 
