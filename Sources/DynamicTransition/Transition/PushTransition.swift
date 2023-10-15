@@ -7,7 +7,6 @@
 
 import UIKit
 import BaseToolbox
-import Motion
 
 open class PushTransition: NSObject, Transition {
     open lazy var horizontalDismissGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
