@@ -15,14 +15,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/lkzhao/BaseToolbox", from: "0.6.0"),
-        .package(url: "https://github.com/lkzhao/YetAnotherAnimationLibrary", from: "1.6.0"),
         .package(url: "https://github.com/kylebshr/ScreenCorners", from: "1.0.1"),
         .package(url: "https://github.com/b3ll/Motion", from: "0.1.4"),
     ],
     targets: [
         .target(
             name: "DynamicTransition",
-            dependencies: ["BaseToolbox", "ScreenCorners", "YetAnotherAnimationLibrary", "Motion"]
+            dependencies: ["BaseToolbox", "ScreenCorners", "Motion"]
         )
     ]
 )

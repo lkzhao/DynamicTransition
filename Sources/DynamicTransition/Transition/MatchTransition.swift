@@ -5,7 +5,6 @@
 //
 
 import UIKit
-import YetAnotherAnimationLibrary
 import ScreenCorners
 import BaseToolbox
 
@@ -58,117 +57,239 @@ open class MatchTransition: NSObject, Transition {
 
     var isTransitioningVertically = false
 
-    private var runner: MatchTransitionRunner?
+    private var context: TransitionContext?
+    private var animator: TransitionAnimator?
     private var isInteractive: Bool = false
     private var startTime: TimeInterval = 0
+    
+    let foregroundContainerView = MatchTransitionContainerView()
+    var matchedSourceView: UIView?
+    var matchedDestinationView: UIView?
+    var sourceViewSnapshot: UIView?
+    var scrollViewObserver: Any?
+    let overlayView = UIView().with {
+        $0.backgroundColor = UIColor(dark: .black.withAlphaComponent(0.6), light: .black.withAlphaComponent(0.4))
+    }
+    var isMatched: Bool {
+        matchedSourceView != nil
+    }
 
     public func animateTransition(context: TransitionContext) {
         print("Start transition isPresenting: \(context.isPresenting)")
-        guard runner == nil else {
+        guard self.context == nil else {
             return
         }
-        let front = context.foreground.view!
         startTime = CACurrentMediaTime()
+        self.context = context
 
         CATransaction.begin()
-        let runner = MatchTransitionRunner(context: context,
-                                           isTransitioningVertically: isTransitioningVertically) { [weak self] finished in
-            self?.didCompleteTransition(finished: finished)
+        let container = context.container
+        let foreground = context.foreground
+        let background = context.background
+
+        foregroundContainerView.frame = container.bounds
+        foregroundContainerView.backgroundColor = foreground.view.backgroundColor
+
+        container.addSubview(background.view)
+        container.addSubview(overlayView)
+        container.addSubview(foregroundContainerView)
+        foregroundContainerView.contentView.addSubview(foreground.view)
+
+        overlayView.isUserInteractionEnabled = true
+        overlayView.frame = container.bounds
+        foreground.view.frame = container.bounds
+        foreground.view.setNeedsLayout()
+        foreground.view.layoutIfNeeded()
+        foregroundContainerView.lockSafeAreaInsets = true
+
+        let matchedDestinationView = context.foreground.findObjectMatchType(MatchTransitionDelegate.self)?
+            .matchedViewFor(transition: context, otherViewController: context.background)
+        let matchedSourceView = context.background.findObjectMatchType(MatchTransitionDelegate.self)?
+            .matchedViewFor(transition: context, otherViewController: context.foreground)
+
+        self.matchedSourceView = matchedSourceView
+        self.matchedDestinationView = matchedDestinationView
+
+        if let matchedSourceView, let sourceViewSnapshot = matchedSourceView.snapshotView(afterScreenUpdates: true) {
+            foregroundContainerView.contentView.addSubview(sourceViewSnapshot)
+            self.sourceViewSnapshot = sourceViewSnapshot
+            matchedSourceView.isHidden = true
+            if let parentScrollView = matchedSourceView.superview as? UIScrollView {
+                scrollViewObserver = parentScrollView.observe(\UIScrollView.contentOffset, options: .new) { table, change in
+                    self.targetDidChange()
+                }
+            }
         }
-        self.runner = runner
-        if context.isPresenting {
-            interruptibleVerticalDismissGestureRecognizer.isEnabled = true
-            interruptibleHorizontalDismissGestureRecognizer.isEnabled = true
-            runner.container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-            runner.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-            verticalDismissGestureRecognizer.isEnabled = false
-            horizontalDismissGestureRecognizer.isEnabled = false
-            runner.apply(state: runner.dismissedState, animated: false, completion: nil)
-        } else {
-            runner.apply(state: runner.presentedState, animated: false, completion: nil)
+
+        container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+
+        let animator = TransitionAnimator { position in
+            self.didCompleteTransitionAnimation(position: position)
         }
+        self.animator = animator
+
+        calculateEndStates()
+
+        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
         CATransaction.commit()
+
         if !isInteractive {
-            runner.completeTransition(shouldFinish: true)
+            animator.animateTo(position: context.isPresenting ? .presented : .dismissed)
         }
     }
 
-    func didCompleteTransition(finished: Bool) {
+    func calculateEndStates() {
+        guard let context, let animator else { return }
+        let container = context.container
+        let defaultDismissedFrame = isTransitioningVertically ? container.bounds.offsetBy(dx: 0, dy: container.bounds.height) : container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
+        let dismissedFrame = matchedSourceView.map {
+            container.convert($0.bounds, from: $0)
+        } ?? defaultDismissedFrame
+        let presentedFrame = isMatched ? matchedDestinationView.map {
+            container.convert($0.bounds, from: $0)
+        } ?? container.bounds : container.bounds
+
+        let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
+        let presentedCornerRadius = isFullScreen ? UIScreen.main.displayCornerRadius : 0
+        let dismissedCornerRadius = matchedSourceView?.cornerRadius ?? presentedCornerRadius
+        let containerPresentedFrame = container.bounds
+        let containerDismissedFrame = dismissedFrame
+
+        let scaledSize = presentedFrame.size.size(fill: dismissedFrame.size)
+        let scale = scaledSize.width / container.bounds.width
+        let sizeOffset = -(scaledSize - dismissedFrame.size) / 2
+        let originOffset = -presentedFrame.minY * scale
+        let offsetX = -(1 - scale) / 2 * container.bounds.width
+        let offsetY = -(1 - scale) / 2 * container.bounds.height
+        let offset = CGPoint(
+            x: offsetX + sizeOffset.width,
+            y: offsetY + sizeOffset.height + originOffset)
+
+        let foregroundView = context.foregroundView
+
+        animator.set(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
+        animator.set(view: foregroundContainerView, keyPath: \.shadowOpacity, presentedValue: 1, dismissedValue: 0)
+        animator.set(view: foregroundContainerView, keyPath: \.cornerRadius, presentedValue: presentedCornerRadius, dismissedValue: dismissedCornerRadius)
+        animator.set(view: foregroundContainerView, keyPath: \.bounds.size, presentedValue: containerPresentedFrame.size, dismissedValue: containerDismissedFrame.size)
+        animator.set(view: foregroundContainerView, keyPath: \.center, presentedValue: containerPresentedFrame.center, dismissedValue: containerDismissedFrame.center)
+        animator.set(view: foregroundView, keyPath: \.translation, presentedValue: .zero, dismissedValue: offset)
+        animator.set(view: foregroundView, keyPath: \.scale, presentedValue: 1, dismissedValue: scale)
+        if let sourceViewSnapshot {
+            animator.set(view: sourceViewSnapshot, keyPath: \.bounds.size, presentedValue: presentedFrame.size, dismissedValue: dismissedFrame.size)
+            animator.set(view: sourceViewSnapshot, keyPath: \.center, presentedValue: presentedFrame.center, dismissedValue: dismissedFrame.bounds.center)
+            animator.set(view: sourceViewSnapshot, keyPath: \.alpha, presentedValue: 0, dismissedValue: 1)
+        }
+    }
+
+    func didCompleteTransitionAnimation(position: TransitionEndPosition) {
+        guard let context else { return }
         let duration = CACurrentMediaTime() - startTime
-        let runner = runner
-        isInteractive = false
-        self.runner = nil
+        let didPresent = position == .presented
+
+        if didPresent {
+            context.container.addSubview(context.foregroundView)
+        } else {
+            context.container.addSubview(context.backgroundView)
+        }
+        scrollViewObserver = nil
+        matchedSourceView?.isHidden = false
+        overlayView.removeFromSuperview()
+        foregroundContainerView.lockSafeAreaInsets = false
+        foregroundContainerView.removeFromSuperview()
+
         verticalDismissGestureRecognizer.isEnabled = true
         horizontalDismissGestureRecognizer.isEnabled = true
-        delay {
-            print("Complete transition finished:\(finished) duration:\(duration)")
-            runner?.onCompletion(finished: finished)
+        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+
+        self.animator = nil
+        self.context = nil
+        self.isInteractive = false
+        self.sourceViewSnapshot = nil
+
+        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
+        context.completeTransition(didPresent == context.isPresenting)
+    }
+
+    func targetDidChange() {
+        guard let animator, let targetPosition = animator.targetPosition, targetPosition == .dismissed else { return }
+        let oldContainerCenter = animator.dismissedValue(view: foregroundContainerView, keyPath: \.center)
+        calculateEndStates()
+        let newContainerCenter = animator.dismissedValue(view: foregroundContainerView, keyPath: \.center)
+        let diff = newContainerCenter - oldContainerCenter
+        if diff != .zero {
+            let newCenter = foregroundContainerView.center + diff
+            animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
         }
     }
 
     func beginInteractiveTransition() {
         isInteractive = true
-        runner?.pause()
+        animator?.pause()
     }
 
     var totalTranslation: CGPoint = .zero
     @objc func handlePan(gr: UIPanGestureRecognizer) {
         guard let view = gr.view else { return }
         func progressFrom(offset: CGPoint) -> CGFloat {
-            guard let runner else { return 0 }
-            let container = runner.container
+            guard let context else { return 0 }
+            let container = context.container
             let maxAxis = max(container.bounds.width, container.bounds.height)
             let progress = (offset.x / maxAxis + offset.y / maxAxis) * 1.5
-            return runner.isPresenting ? -progress : progress
+            return -progress
         }
         switch gr.state {
         case .began:
             options.onDragStart?(self)
             beginInteractiveTransition()
-            if runner == nil {
+            if context == nil {
                 if let vc = view.parentNavigationController, vc.viewControllers.count > 1 {
                     vc.popViewController(animated: true)
                 }
             }
             totalTranslation = .zero
         case .changed:
-            guard let runner else { return }
+            guard let animator else { return }
             let translation = gr.translation(in: nil)
             gr.setTranslation(.zero, in: nil)
             totalTranslation += translation
             let progress = progressFrom(offset: translation)
-            if runner.isMatched {
-                let newCenter = runner.foregroundContainerView.center + translation * 0.5
-                let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
-                runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
+            if isMatched {
+                let newCenter = foregroundContainerView.center + translation * 0.5
+                let newRotation = foregroundContainerView.rotation + translation.x * 0.0003
+                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
+                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.rotation, value: newRotation)
             } else {
-                let newCenter = runner.foregroundContainerView.center + translation
-                let rotation = runner.foregroundContainerView.yaal.rotation.value.value + translation.x * 0.0003
-                runner.add(progress: progress, newCenter: newCenter, rotation: rotation)
+                let newCenter = foregroundContainerView.center + translation
+                let newRotation = foregroundContainerView.rotation + translation.x * 0.0003
+                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
+                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.rotation, value: newRotation)
             }
+            animator.shift(progress: progress)
         default:
-            guard let runner else { return }
+            guard let context, let animator else { return }
             let velocity = gr.velocity(in: nil)
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x + translationPlusVelocity.y > 80
-            let shouldFinish = runner.isPresenting ? !shouldDismiss : shouldDismiss
             if shouldDismiss {
-                interruptibleVerticalDismissGestureRecognizer.isEnabled = false
-                interruptibleHorizontalDismissGestureRecognizer.isEnabled = false
-                runner.foregroundContainerView.isUserInteractionEnabled = false
-                runner.overlayView.isUserInteractionEnabled = false
+                context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+                context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+                foregroundContainerView.isUserInteractionEnabled = false
+                overlayView.isUserInteractionEnabled = false
             }
-            if runner.isMatched {
-                runner.foregroundContainerView.yaal.center.velocity.value = velocity
+            if isMatched {
+                animator.setVelocity(view: foregroundContainerView, keyPath: \.center, velocity: velocity)
+                animator.set(view: foregroundContainerView, keyPath: \.rotation, presentedValue: 0, dismissedValue: 0)
             } else {
-                runner.foregroundContainerView.yaal.center.velocity.value = velocity
-                let angle = translationPlusVelocity / runner.container.bounds.size
-                let targetOffset = angle / angle.distance(.zero) * 1.4 * runner.container.bounds.size
-                let targetRotation = runner.foregroundContainerView.yaal.rotation.value.value + translationPlusVelocity.x * 0.0001
-                runner.dismissedState.foregroundContainerFrame = runner.container.bounds + targetOffset
-                runner.dismissedState.foregroundContainerRotation = targetRotation
+                animator.setVelocity(view: foregroundContainerView, keyPath: \.center, velocity: velocity)
+                let angle = translationPlusVelocity / context.container.bounds.size
+                let targetOffset = angle / angle.distance(.zero) * 1.4 * context.container.bounds.size
+                let targetRotation = foregroundContainerView.rotation + translationPlusVelocity.x * 0.0001
+                animator.setDismissedValue(view: foregroundContainerView, keyPath: \.center, value: context.container.bounds.center + targetOffset)
+                animator.setDismissedValue(view: foregroundContainerView, keyPath: \.rotation, value: targetRotation)
             }
-            runner.completeTransition(shouldFinish: shouldFinish)
+            animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
         }
     }
 }

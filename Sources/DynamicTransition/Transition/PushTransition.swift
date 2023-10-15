@@ -48,11 +48,11 @@ open class PushTransition: NSObject, Transition {
         foregroundView.layoutIfNeeded()
         foregroundView.lockSafeAreaInsets = true
 
-        var animator = TransitionAnimator { position in
+        let animator = TransitionAnimator { position in
             self.didCompleteTransitionAnimation(position: position)
         }
-        animator.add(view: foregroundView, keyPath: \.translationX, presentedValue: 0, dismissedValue: container.bounds.width)
-        animator.add(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
+        animator.set(view: foregroundView, keyPath: \.translationX, presentedValue: 0, dismissedValue: container.bounds.width)
+        animator.set(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
         animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
 
         self.context = context
@@ -110,7 +110,7 @@ open class PushTransition: NSObject, Transition {
                 context.foregroundView.isUserInteractionEnabled = false
                 overlayView?.isUserInteractionEnabled = false
             }
-            context.foregroundView.yaal.translationX.velocity.value = velocity.x
+            animator.setVelocity(view: context.foregroundView, keyPath: \.translationX, velocity: velocity.x)
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
         }
     }
@@ -144,6 +144,30 @@ extension UIView {
         }
         set {
             setValue(newValue, forKeyPath: "layer.transform.translation.x")
+        }
+    }
+    var translation: CGPoint {
+        get {
+            value(forKeyPath: "layer.transform.translation") as? CGPoint ?? .zero
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.translation")
+        }
+    }
+    var rotation: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.rotation") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.rotation")
+        }
+    }
+    var scale: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.scale") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.scale")
         }
     }
 }
