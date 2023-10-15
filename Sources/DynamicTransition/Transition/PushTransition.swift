@@ -27,6 +27,10 @@ open class PushTransition: NSObject, Transition {
     var overlayView: UIView?
     var isInteractive: Bool = false
 
+    public var wantsInteractiveStart: Bool {
+        isInteractive
+    }
+
     public func animateTransition(context: TransitionContext) {
         let container = context.container
         let foregroundView = context.foregroundView
@@ -76,6 +80,12 @@ open class PushTransition: NSObject, Transition {
         context.completeTransition(didPresent == context.isPresenting)
     }
 
+    func beginInteractiveTransition() {
+        isInteractive = true
+        animator?.pause()
+        context?.beginInteractiveTransition()
+    }
+
     var totalTranslation: CGPoint = .zero
     @objc func handlePan(gr: UIPanGestureRecognizer) {
         guard let view = gr.view else { return }
@@ -87,11 +97,9 @@ open class PushTransition: NSObject, Transition {
         }
         switch gr.state {
         case .began:
-            isInteractive = true
+            beginInteractiveTransition()
             if context == nil {
                 view.dismiss()
-            } else {
-                animator?.pause()
             }
             totalTranslation = .zero
         case .changed:
@@ -113,6 +121,7 @@ open class PushTransition: NSObject, Transition {
             }
             animator[context.foregroundView, \.translationX].velocity = velocity.x
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
+            context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
     }
 }

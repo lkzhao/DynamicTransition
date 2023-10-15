@@ -74,6 +74,10 @@ open class MatchTransition: NSObject, Transition {
         matchedSourceView != nil
     }
 
+    public var wantsInteractiveStart: Bool {
+        isInteractive
+    }
+
     public func animateTransition(context: TransitionContext) {
         print("Start transition isPresenting: \(context.isPresenting)")
         guard self.context == nil else {
@@ -218,7 +222,7 @@ open class MatchTransition: NSObject, Transition {
         self.isInteractive = false
         self.sourceViewSnapshot = nil
 
-        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
+//        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
         context.completeTransition(didPresent == context.isPresenting)
     }
 
@@ -237,6 +241,7 @@ open class MatchTransition: NSObject, Transition {
     func beginInteractiveTransition() {
         isInteractive = true
         animator?.pause()
+        context?.beginInteractiveTransition()
     }
 
     var totalTranslation: CGPoint = .zero
@@ -294,6 +299,7 @@ open class MatchTransition: NSObject, Transition {
                 animator[foregroundContainerView, \.rotation].dismissedValue = targetRotation
             }
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
+            context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
     }
 }

@@ -8,6 +8,7 @@ public protocol TransitionProvider {
 }
 
 public protocol Transition {
+    var wantsInteractiveStart: Bool { get }
     func animateTransition(context: TransitionContext)
 }
 
@@ -18,6 +19,10 @@ public protocol TransitionContext {
     var isPresenting: Bool { get }
 
     func completeTransition(_ didComplete: Bool)
+
+    // interactive
+    func beginInteractiveTransition()
+    func endInteractiveTransition(_ isCompleting: Bool)
 }
 
 public extension TransitionContext {
