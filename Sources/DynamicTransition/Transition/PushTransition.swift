@@ -51,8 +51,10 @@ open class PushTransition: NSObject, Transition {
         let animator = TransitionAnimator { position in
             self.didCompleteTransitionAnimation(position: position)
         }
-        animator.set(view: foregroundView, keyPath: \.translationX, presentedValue: 0, dismissedValue: container.bounds.width)
-        animator.set(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
+        animator[foregroundView, \.translationX].presentedValue = 0
+        animator[foregroundView, \.translationX].dismissedValue = container.bounds.width
+        animator[overlayView, \.alpha].presentedValue = 1
+        animator[overlayView, \.alpha].dismissedValue = 0
         animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
 
         self.context = context
@@ -110,7 +112,7 @@ open class PushTransition: NSObject, Transition {
                 context.foregroundView.isUserInteractionEnabled = false
                 overlayView?.isUserInteractionEnabled = false
             }
-            animator.setVelocity(view: context.foregroundView, keyPath: \.translationX, velocity: velocity.x)
+            animator[context.foregroundView, \.translationX].velocity = velocity.x
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
         }
     }
@@ -134,40 +136,5 @@ extension PushTransition: UIGestureRecognizerDelegate {
             return true
         }
         return false
-    }
-}
-
-extension UIView {
-    var translationX: CGFloat {
-        get {
-            value(forKeyPath: "layer.transform.translation.x") as? CGFloat ?? 0
-        }
-        set {
-            setValue(newValue, forKeyPath: "layer.transform.translation.x")
-        }
-    }
-    var translation: CGPoint {
-        get {
-            value(forKeyPath: "layer.transform.translation") as? CGPoint ?? .zero
-        }
-        set {
-            setValue(newValue, forKeyPath: "layer.transform.translation")
-        }
-    }
-    var rotation: CGFloat {
-        get {
-            value(forKeyPath: "layer.transform.rotation") as? CGFloat ?? 0
-        }
-        set {
-            setValue(newValue, forKeyPath: "layer.transform.rotation")
-        }
-    }
-    var scale: CGFloat {
-        get {
-            value(forKeyPath: "layer.transform.scale") as? CGFloat ?? 0
-        }
-        set {
-            setValue(newValue, forKeyPath: "layer.transform.scale")
-        }
     }
 }

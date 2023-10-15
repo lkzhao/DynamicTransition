@@ -8,165 +8,33 @@
 import UIKit
 import Motion
 
-enum TransitionEndPosition {
+public enum TransitionEndPosition {
     case dismissed
     case presented
 }
 
-protocol AnyStateAnimator {
-    func seekTo(position: TransitionEndPosition)
-    func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void)
-    func pause()
-    func shift(progress: CGFloat)
-}
-
-extension SupportedSIMD where Scalar: SupportedScalar {
-    func distance(between: Self) -> Scalar {
-        var result = Scalar.zero
-        for i in 0..<scalarCount {
-            result += abs(self[i] - between[i])
-        }
-        return result
-    }
-}
-
-extension SIMDRepresentable where SIMDType.Scalar: SupportedScalar {
-    func distance(between other: Self) -> SIMDType.Scalar {
-        simdRepresentation().distance(between: other.simdRepresentation())
-    }
-}
-
-struct AnimatorID<View: UIView, Value: SIMDRepresentable>: Hashable {
-    let view: View
-    let keypath: ReferenceWritableKeyPath<View, Value>
-}
-
-private class StateAnimator<Value: SIMDRepresentable>: AnyStateAnimator where Value.SIMDType.Scalar == Double {
-
-    let animation: Motion.SpringAnimation<Value>
-
-    var presentedValue: Value {
-        didSet {
-            if targetPosition == .presented {
-                animation.toValue = presentedValue
-            }
-        }
-    }
-    var dismissedValue: Value {
-        didSet {
-            if targetPosition == .dismissed {
-                animation.toValue = dismissedValue
-            }
-        }
-    }
-    var currentValue: Value {
-        get {
-            animation.value
-        }
-        set {
-            animation.updateValue(to: newValue, postValueChanged: true)
-        }
-    }
-    var currentVelocity: Value {
-        get {
-            animation.velocity
-        }
-        set {
-            animation.velocity = newValue
-        }
-    }
-    private(set) var targetPosition: TransitionEndPosition?
-
-    init(animation: Motion.SpringAnimation<Value>) {
-        self.animation = animation
-        self.presentedValue = animation.value
-        self.dismissedValue = animation.value
-    }
-
-    func seekTo(position: TransitionEndPosition) {
-        currentValue = position == .presented ? presentedValue : dismissedValue
-    }
-
-    func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void) {
-        let value = position == .presented ? presentedValue : dismissedValue
-        let threshold = max(1, animation.value.distance(between: value)) * 0.005
-        let epsilon = (threshold as? Value.SIMDType.EpsilonType) ?? 0.01
-        targetPosition = position
-        if animation.value.simdRepresentation().approximatelyEqual(to: value.simdRepresentation(), epsilon: epsilon) {
-            // value already there
-            completion()
-        } else {
-            animation.configure(stiffness: 300, damping: 30)
-            animation.toValue = value
-            animation.resolvingEpsilon = epsilon
-            animation.completion = completion
-            animation.start()
-        }
-    }
-
-    func pause() {
-        targetPosition = nil
-        animation.stop()
-    }
-
-    func shift(progress: CGFloat) {
-        let newValueVector = Double(progress) * (presentedValue.simdRepresentation() - dismissedValue.simdRepresentation()) + currentValue.simdRepresentation()
-        currentValue = Value(newValueVector)
-    }
-}
-
 class TransitionAnimator {
-    private var children: [AnyHashable: AnyStateAnimator]
+    private var children: [AnyHashable: AnyTransitionPropertyAnimator]
     private var completion: (TransitionEndPosition) -> Void
-    private var independent: Set<AnyHashable> = []
 
-    private(set) var targetPosition: TransitionEndPosition? = nil
-    var isAnimating: Bool {
+    public private(set) var targetPosition: TransitionEndPosition? = nil
+    public var isAnimating: Bool {
         targetPosition != nil
     }
 
-    init(completion: @escaping (TransitionEndPosition) -> Void) {
+    public init(completion: @escaping (TransitionEndPosition) -> Void) {
         children = [:]
         self.completion = completion
     }
 
-    func set<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>, presentedValue: Value, dismissedValue: Value) where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].presentedValue = presentedValue
-        self[view, keyPath].dismissedValue = dismissedValue
+    private struct AnimatorID<View: UIView, Value: SIMDRepresentable>: Hashable {
+        let view: View
+        let keypath: ReferenceWritableKeyPath<View, Value>
     }
 
-    func setPresentedValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>, value: Value) where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].presentedValue = value
-    }
-
-    func setDismissedValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>, value: Value) where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].dismissedValue = value
-    }
-
-    func setCurrentValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>, value: Value) where Value.SIMDType.Scalar == Double {
-        _ = independent.insert(AnimatorID(view: view, keypath: keyPath))
-        self[view, keyPath].currentValue = value
-    }
-
-    func setVelocity<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>, velocity: Value) where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].animation.velocity = velocity
-    }
-
-    func currentValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> Value where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].currentValue
-    }
-
-    func presentedValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> Value where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].presentedValue
-    }
-
-    func dismissedValue<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> Value where Value.SIMDType.Scalar == Double {
-        self[view, keyPath].dismissedValue
-    }
-
-    private subscript<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> StateAnimator<Value> {
+    public subscript<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> TransitionPropertyAnimator<Value> {
         let key = AnimatorID(view: view, keypath: keyPath)
-        if let animator = children[key] as? StateAnimator<Value> {
+        if let animator = children[key] as? TransitionPropertyAnimator<Value> {
             return animator
         } else {
             let animation = SpringAnimation(initialValue: view[keyPath: keyPath])
@@ -174,20 +42,23 @@ class TransitionAnimator {
             animation.onValueChanged { [weak view] value in
                 view?[keyPath: keyPath] = value
             }
-            let animator = StateAnimator(animation: animation)
+            let animator = TransitionPropertyAnimator(animation: animation)
             children[key] = animator
             return animator
         }
     }
 
-    func seekTo(position: TransitionEndPosition) {
+    public func seekTo(position: TransitionEndPosition) {
         for child in children.values {
             child.seekTo(position: position)
         }
     }
 
-    func animateTo(position: TransitionEndPosition) {
-        independent.removeAll()
+    public func animateTo(position: TransitionEndPosition) {
+        guard targetPosition == nil else {
+            assertionFailure("You should pause the animation before starting another animation")
+            return
+        }
         targetPosition = position
         let dispatchGroup = DispatchGroup()
         for child in children.values {
@@ -202,16 +73,103 @@ class TransitionAnimator {
     }
 
 
-    func pause() {
+    public func pause() {
         targetPosition = nil
         for child in children.values {
             child.pause()
         }
     }
 
-    func shift(progress: CGFloat) {
-        for (key, child) in children where !independent.contains(key) {
+    public func shift(progress: Double) {
+        for child in children.values {
             child.shift(progress: progress)
         }
+    }
+}
+
+public class TransitionPropertyAnimator<Value: SIMDRepresentable> {
+    public let animation: Motion.SpringAnimation<Value>
+
+    public var presentedValue: Value {
+        didSet {
+            if targetPosition == .presented {
+                animation.toValue = presentedValue
+            }
+        }
+    }
+    public var dismissedValue: Value {
+        didSet {
+            if targetPosition == .dismissed {
+                animation.toValue = dismissedValue
+            }
+        }
+    }
+    public var value: Value {
+        get {
+            animation.value
+        }
+        set {
+            animation.updateValue(to: newValue, postValueChanged: true)
+        }
+    }
+    public var velocity: Value {
+        get {
+            animation.velocity
+        }
+        set {
+            animation.velocity = newValue
+        }
+    }
+    public var isIndependent: Bool = false
+    public var isAnimating: Bool {
+        targetPosition != nil
+    }
+    public private(set) var targetPosition: TransitionEndPosition?
+
+    fileprivate init(animation: Motion.SpringAnimation<Value>) {
+        self.animation = animation
+        self.presentedValue = animation.value
+        self.dismissedValue = animation.value
+    }
+}
+
+fileprivate protocol AnyTransitionPropertyAnimator {
+    func seekTo(position: TransitionEndPosition)
+    func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void)
+    func pause()
+    func shift(progress: Double)
+}
+
+extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
+    fileprivate func seekTo(position: TransitionEndPosition) {
+        value = position == .presented ? presentedValue : dismissedValue
+    }
+
+    fileprivate func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void) {
+        let value = position == .presented ? presentedValue : dismissedValue
+        let threshold = max(1, animation.value.distance(between: value)) * 0.005
+        let epsilon = (threshold as? Value.SIMDType.EpsilonType) ?? 0.01
+        isIndependent = false
+        targetPosition = position
+        if animation.value.simdRepresentation().approximatelyEqual(to: value.simdRepresentation(), epsilon: epsilon) {
+            completion()
+        } else {
+            animation.configure(stiffness: 300, damping: 30)
+            animation.toValue = value
+            animation.resolvingEpsilon = epsilon
+            animation.completion = completion
+            animation.start()
+        }
+    }
+
+    fileprivate func pause() {
+        targetPosition = nil
+        animation.stop()
+    }
+
+    fileprivate func shift(progress: Double) {
+        guard !isIndependent else { return }
+        let newValueVector = Value.SIMDType.Scalar(progress) * (presentedValue.simdRepresentation() - dismissedValue.simdRepresentation()) + value.simdRepresentation()
+        value = Value(newValueVector)
     }
 }

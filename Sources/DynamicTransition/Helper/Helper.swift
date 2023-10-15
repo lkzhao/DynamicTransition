@@ -107,3 +107,46 @@ extension UIView {
         return self.swizzled_safeAreaInsets
     }
 }
+
+extension UIView {
+    var translationX: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.translation.x") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.translation.x")
+        }
+    }
+    var translationY: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.translation.y") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.translation.y")
+        }
+    }
+    var translation: CGPoint {
+        get {
+            value(forKeyPath: "layer.transform.translation") as? CGPoint ?? .zero
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.translation")
+        }
+    }
+    var rotation: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.rotation") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.rotation")
+        }
+    }
+    var scale: CGFloat {
+        get {
+            value(forKeyPath: "layer.transform.scale") as? CGFloat ?? 0
+        }
+        set {
+            setValue(newValue, forKeyPath: "layer.transform.scale")
+        }
+    }
+}

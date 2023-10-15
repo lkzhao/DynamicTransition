@@ -62,7 +62,7 @@ open class MatchTransition: NSObject, Transition {
     private var isInteractive: Bool = false
     private var startTime: TimeInterval = 0
     
-    let foregroundContainerView = MatchTransitionContainerView()
+    let foregroundContainerView = ShadowContainerView()
     var matchedSourceView: UIView?
     var matchedDestinationView: UIView?
     var sourceViewSnapshot: UIView?
@@ -168,17 +168,27 @@ open class MatchTransition: NSObject, Transition {
 
         let foregroundView = context.foregroundView
 
-        animator.set(view: overlayView, keyPath: \.alpha, presentedValue: 1, dismissedValue: 0)
-        animator.set(view: foregroundContainerView, keyPath: \.shadowOpacity, presentedValue: 1, dismissedValue: 0)
-        animator.set(view: foregroundContainerView, keyPath: \.cornerRadius, presentedValue: presentedCornerRadius, dismissedValue: dismissedCornerRadius)
-        animator.set(view: foregroundContainerView, keyPath: \.bounds.size, presentedValue: containerPresentedFrame.size, dismissedValue: containerDismissedFrame.size)
-        animator.set(view: foregroundContainerView, keyPath: \.center, presentedValue: containerPresentedFrame.center, dismissedValue: containerDismissedFrame.center)
-        animator.set(view: foregroundView, keyPath: \.translation, presentedValue: .zero, dismissedValue: offset)
-        animator.set(view: foregroundView, keyPath: \.scale, presentedValue: 1, dismissedValue: scale)
+        animator[overlayView, \.alpha].presentedValue = 1
+        animator[overlayView, \.alpha].dismissedValue = 0
+        animator[foregroundContainerView, \.shadowOpacity].presentedValue = 1
+        animator[foregroundContainerView, \.shadowOpacity].dismissedValue = 0
+        animator[foregroundContainerView, \.cornerRadius].presentedValue =  presentedCornerRadius
+        animator[foregroundContainerView, \.cornerRadius].dismissedValue = dismissedCornerRadius
+        animator[foregroundContainerView, \.bounds.size].presentedValue =  containerPresentedFrame.size
+        animator[foregroundContainerView, \.bounds.size].dismissedValue = containerDismissedFrame.size
+        animator[foregroundContainerView, \.center].presentedValue =  containerPresentedFrame.center
+        animator[foregroundContainerView, \.center].dismissedValue = containerDismissedFrame.center
+        animator[foregroundView, \.translation].presentedValue =  .zero
+        animator[foregroundView, \.translation].dismissedValue = offset
+        animator[foregroundView, \.scale].presentedValue =  1
+        animator[foregroundView, \.scale].dismissedValue = scale
         if let sourceViewSnapshot {
-            animator.set(view: sourceViewSnapshot, keyPath: \.bounds.size, presentedValue: presentedFrame.size, dismissedValue: dismissedFrame.size)
-            animator.set(view: sourceViewSnapshot, keyPath: \.center, presentedValue: presentedFrame.center, dismissedValue: dismissedFrame.bounds.center)
-            animator.set(view: sourceViewSnapshot, keyPath: \.alpha, presentedValue: 0, dismissedValue: 1)
+            animator[sourceViewSnapshot, \.bounds.size].presentedValue = presentedFrame.size
+            animator[sourceViewSnapshot, \.bounds.size].dismissedValue = dismissedFrame.size
+            animator[sourceViewSnapshot, \.center].presentedValue = presentedFrame.center
+            animator[sourceViewSnapshot, \.center].dismissedValue = dismissedFrame.bounds.center
+            animator[sourceViewSnapshot, \.alpha].presentedValue = 0
+            animator[sourceViewSnapshot, \.alpha].dismissedValue = 1
         }
     }
 
@@ -214,13 +224,13 @@ open class MatchTransition: NSObject, Transition {
 
     func targetDidChange() {
         guard let animator, let targetPosition = animator.targetPosition, targetPosition == .dismissed else { return }
-        let oldContainerCenter = animator.dismissedValue(view: foregroundContainerView, keyPath: \.center)
+        let oldContainerCenter = animator[foregroundContainerView, \.center].dismissedValue
         calculateEndStates()
-        let newContainerCenter = animator.dismissedValue(view: foregroundContainerView, keyPath: \.center)
+        let newContainerCenter = animator[foregroundContainerView, \.center].dismissedValue
         let diff = newContainerCenter - oldContainerCenter
         if diff != .zero {
             let newCenter = foregroundContainerView.center + diff
-            animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
+            animator[foregroundContainerView, \.center].value = newCenter
         }
     }
 
@@ -255,17 +265,10 @@ open class MatchTransition: NSObject, Transition {
             gr.setTranslation(.zero, in: nil)
             totalTranslation += translation
             let progress = progressFrom(offset: translation)
-            if isMatched {
-                let newCenter = foregroundContainerView.center + translation * 0.5
-                let newRotation = foregroundContainerView.rotation + translation.x * 0.0003
-                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
-                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.rotation, value: newRotation)
-            } else {
-                let newCenter = foregroundContainerView.center + translation
-                let newRotation = foregroundContainerView.rotation + translation.x * 0.0003
-                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.center, value: newCenter)
-                animator.setCurrentValue(view: foregroundContainerView, keyPath: \.rotation, value: newRotation)
-            }
+            animator[foregroundContainerView, \.center].isIndependent = true
+            animator[foregroundContainerView, \.rotation].isIndependent = true
+            animator[foregroundContainerView, \.center].value += translation * (isMatched ? 0.5 : 1.0)
+            animator[foregroundContainerView, \.rotation].value += translation.x * 0.0003
             animator.shift(progress: progress)
         default:
             guard let context, let animator else { return }
@@ -278,16 +281,17 @@ open class MatchTransition: NSObject, Transition {
                 foregroundContainerView.isUserInteractionEnabled = false
                 overlayView.isUserInteractionEnabled = false
             }
+            animator[foregroundContainerView, \.center].velocity = velocity
             if isMatched {
-                animator.setVelocity(view: foregroundContainerView, keyPath: \.center, velocity: velocity)
-                animator.set(view: foregroundContainerView, keyPath: \.rotation, presentedValue: 0, dismissedValue: 0)
+                animator[foregroundContainerView, \.rotation].presentedValue = 0
+                animator[foregroundContainerView, \.rotation].dismissedValue = 0
             } else {
-                animator.setVelocity(view: foregroundContainerView, keyPath: \.center, velocity: velocity)
                 let angle = translationPlusVelocity / context.container.bounds.size
-                let targetOffset = angle / angle.distance(.zero) * 1.4 * context.container.bounds.size
+                let offset = angle / angle.distance(.zero) * 1.4 * context.container.bounds.size
+                let targetOffset = context.container.bounds.center + offset
                 let targetRotation = foregroundContainerView.rotation + translationPlusVelocity.x * 0.0001
-                animator.setDismissedValue(view: foregroundContainerView, keyPath: \.center, value: context.container.bounds.center + targetOffset)
-                animator.setDismissedValue(view: foregroundContainerView, keyPath: \.rotation, value: targetRotation)
+                animator[foregroundContainerView, \.center].dismissedValue = targetOffset
+                animator[foregroundContainerView, \.rotation].dismissedValue = targetRotation
             }
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
         }

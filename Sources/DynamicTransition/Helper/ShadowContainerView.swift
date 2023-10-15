@@ -1,5 +1,5 @@
 //
-//  MatchTransitionContainerView.swift
+//  ShadowContainerView.swift
 //  
 //
 //  Created by Luke Zhao on 10/9/23.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-class MatchTransitionContainerView: UIView {
+class ShadowContainerView: UIView {
     let contentView = UIView()
 
     override var cornerRadius: CGFloat {
