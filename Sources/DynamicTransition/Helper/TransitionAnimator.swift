@@ -7,6 +7,7 @@
 
 import UIKit
 import Motion
+import simd
 
 public enum TransitionEndPosition {
     case dismissed
@@ -169,7 +170,16 @@ extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
 
     fileprivate func shift(progress: Double) {
         guard !isIndependent else { return }
-        let newValueVector = Value.SIMDType.Scalar(progress) * (presentedValue.simdRepresentation() - dismissedValue.simdRepresentation()) + value.simdRepresentation()
-        value = Value(newValueVector)
+        let presentedVector = presentedValue.simdRepresentation()
+        let dismissedVector = dismissedValue.simdRepresentation()
+        let progressDiff = Value.SIMDType.Scalar(progress) * (presentedVector - dismissedVector)
+        var valueVector = value.simdRepresentation()
+        valueVector += progressDiff
+
+        // clamp value between presented value and dismissed value
+        let range = presentedVector.createClampingRange(other: dismissedVector)
+        valueVector.clamp(lowerBound: range.lowerBound, upperBound: range.upperBound)
+
+        value = Value(valueVector)
     }
 }
