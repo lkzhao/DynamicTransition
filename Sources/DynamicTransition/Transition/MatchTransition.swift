@@ -20,7 +20,6 @@ public struct MatchTransitionOptions {
 /// A Transition that matches two items and transitions between them.
 ///
 /// The foreground view will be masked to the item and expand as the transition
-/// progress. This transition is interruptible if `isUserInteractionEnabled` is set to true.
 ///
 open class MatchTransition: NSObject, Transition {
     /// Global transition options
@@ -53,6 +52,9 @@ open class MatchTransition: NSObject, Transition {
         if #available(iOS 13.4, *) {
             $0.allowedScrollTypesMask = .all
         }
+    }
+    private lazy var interruptibleTapRepresentGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap)).then {
+        $0.delegate = self
     }
 
     var isTransitioningVertically = false
@@ -123,6 +125,7 @@ open class MatchTransition: NSObject, Transition {
         self.matchedDestinationView = matchedDestinationView
 
         if let matchedSourceView, let sourceViewSnapshot = matchedSourceView.snapshotView(afterScreenUpdates: true) {
+            sourceViewSnapshot.isUserInteractionEnabled = false
             foregroundContainerView.contentView.addSubview(sourceViewSnapshot)
             self.sourceViewSnapshot = sourceViewSnapshot
             matchedSourceView.isHidden = true
@@ -132,9 +135,6 @@ open class MatchTransition: NSObject, Transition {
                 }
             }
         }
-
-        container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-        container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
 
         let animator = TransitionAnimator { position in
             self.didCompleteTransitionAnimation(position: position)
@@ -147,10 +147,7 @@ open class MatchTransition: NSObject, Transition {
         CATransaction.commit()
 
         if !isInteractive {
-            animator.animateTo(position: context.isPresenting ? .presented : .dismissed)
-            if !context.isPresenting {
-                onDismissStarts()
-            }
+            animateTo(position: context.isPresenting ? .presented : .dismissed)
         }
     }
 
@@ -214,6 +211,7 @@ open class MatchTransition: NSObject, Transition {
 
         ContainerManager.shared.endTransition(viewController: context.background, didShow: !didPresent)
         ContainerManager.shared.endTransition(viewController: context.foreground, didShow: didPresent)
+        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = true
         if didPresent {
             context.container.addSubview(ContainerManager.shared.containerViewFor(viewController: context.foreground))
             if !ContainerManager.shared.isContainerInUsed(viewController: context.background) {
@@ -234,8 +232,9 @@ open class MatchTransition: NSObject, Transition {
 
         verticalDismissGestureRecognizer.isEnabled = true
         horizontalDismissGestureRecognizer.isEnabled = true
-        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-        context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
 
         self.animator = nil
         self.context = nil
@@ -300,9 +299,6 @@ open class MatchTransition: NSObject, Transition {
             let velocity = gr.velocity(in: nil)
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x + translationPlusVelocity.y > 80
-            if shouldDismiss {
-                onDismissStarts()
-            }
             animator[foregroundContainerView, \.center].velocity = velocity
             if isMatched {
                 animator[foregroundContainerView, \.rotation].presentedValue = 0
@@ -315,22 +311,57 @@ open class MatchTransition: NSObject, Transition {
                 animator[foregroundContainerView, \.center].dismissedValue = targetOffset
                 animator[foregroundContainerView, \.rotation].dismissedValue = targetRotation
             }
-            animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
+            animateTo(position: shouldDismiss ? .dismissed : .presented)
             context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
     }
 
+    @objc func handleTap() {
+        guard let context else { return }
+        options.onDragStart?(self)
+        beginInteractiveTransition()
+        animateTo(position: .presented)
+        context.endInteractiveTransition(context.isPresenting)
+    }
+
+    func animateTo(position: TransitionEndPosition) {
+        guard let animator else {
+            assertionFailure()
+            return
+        }
+        switch position {
+        case .dismissed:
+            onDismissStarts()
+        case .presented:
+            onPresentStarts()
+        }
+        animator.animateTo(position: position)
+    }
+
     func onDismissStarts() {
         guard let context else { return }
-        context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-        foregroundContainerView.isUserInteractionEnabled = false
+        interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        foregroundContainerView.addGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
+        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = false
         overlayView.isUserInteractionEnabled = false
+    }
+
+    func onPresentStarts() {
+        guard let context else { return }
+        context.container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        context.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
+        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = true
+        overlayView.isUserInteractionEnabled = true
     }
 }
 
 extension MatchTransition: UIGestureRecognizerDelegate {
     open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer == interruptibleTapRepresentGestureRecognizer {
+            return true
+        }
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
         if gestureRecognizer == interruptibleVerticalDismissGestureRecognizer || gestureRecognizer == verticalDismissGestureRecognizer {
