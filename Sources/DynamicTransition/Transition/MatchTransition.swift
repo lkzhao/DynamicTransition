@@ -78,6 +78,10 @@ open class MatchTransition: NSObject, Transition {
         isInteractive
     }
 
+    public func canTransitionSimutanously(with transition: Transition) -> Bool {
+        transition is MatchTransition
+    }
+
     public func animateTransition(context: TransitionContext) {
         print("Start transition isPresenting: \(context.isPresenting)")
         guard self.context == nil else {
@@ -90,21 +94,25 @@ open class MatchTransition: NSObject, Transition {
         let container = context.container
         let foreground = context.foreground
         let background = context.background
+        let backgroundView = ContainerManager.shared.containerViewFor(viewController: background)
+        let foregroundView = ContainerManager.shared.containerViewFor(viewController: foreground)
 
         foregroundContainerView.frame = container.bounds
         foregroundContainerView.backgroundColor = foreground.view.backgroundColor
 
-        container.addSubview(background.view)
-        container.addSubview(overlayView)
-        container.addSubview(foregroundContainerView)
-        foregroundContainerView.contentView.addSubview(foreground.view)
-
-        overlayView.isUserInteractionEnabled = true
+        backgroundView.frameWithoutTransform = container.bounds
+        foregroundView.frameWithoutTransform = container.bounds
         overlayView.frame = container.bounds
-        foreground.view.frame = container.bounds
-        foreground.view.setNeedsLayout()
-        foreground.view.layoutIfNeeded()
+        overlayView.isUserInteractionEnabled = true
+
+        container.addSubview(backgroundView)
+        backgroundView.addSubview(overlayView)
+        backgroundView.addSubview(foregroundContainerView)
+        foregroundContainerView.contentView.addSubview(foregroundView)
         foregroundContainerView.lockSafeAreaInsets = true
+
+        ContainerManager.shared.startTransition(viewController: background)
+        ContainerManager.shared.startTransition(viewController: foreground)
 
         let matchedDestinationView = context.foreground.findObjectMatchType(MatchTransitionDelegate.self)?
             .matchedViewFor(transition: context, otherViewController: context.background)
@@ -140,6 +148,9 @@ open class MatchTransition: NSObject, Transition {
 
         if !isInteractive {
             animator.animateTo(position: context.isPresenting ? .presented : .dismissed)
+            if !context.isPresenting {
+                onDismissStarts()
+            }
         }
     }
 
@@ -201,10 +212,19 @@ open class MatchTransition: NSObject, Transition {
         let duration = CACurrentMediaTime() - startTime
         let didPresent = position == .presented
 
+        ContainerManager.shared.endTransition(viewController: context.background, didShow: !didPresent)
+        ContainerManager.shared.endTransition(viewController: context.foreground, didShow: didPresent)
         if didPresent {
-            context.container.addSubview(context.foregroundView)
+            context.container.addSubview(ContainerManager.shared.containerViewFor(viewController: context.foreground))
+            if !ContainerManager.shared.isContainerInUsed(viewController: context.background) {
+                ContainerManager.shared.containerViewFor(viewController: context.background).removeFromSuperview()
+                ContainerManager.shared.cleanupContainer(viewController: context.background)
+            }
         } else {
-            context.container.addSubview(context.backgroundView)
+            if !ContainerManager.shared.isContainerInUsed(viewController: context.foreground) {
+                ContainerManager.shared.containerViewFor(viewController: context.foreground).removeFromSuperview()
+                ContainerManager.shared.cleanupContainer(viewController: context.foreground)
+            }
         }
         scrollViewObserver = nil
         matchedSourceView?.isHidden = false
@@ -222,7 +242,7 @@ open class MatchTransition: NSObject, Transition {
         self.isInteractive = false
         self.sourceViewSnapshot = nil
 
-//        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
+        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
         context.completeTransition(didPresent == context.isPresenting)
     }
 
@@ -281,10 +301,7 @@ open class MatchTransition: NSObject, Transition {
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x + translationPlusVelocity.y > 80
             if shouldDismiss {
-                context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-                context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-                foregroundContainerView.isUserInteractionEnabled = false
-                overlayView.isUserInteractionEnabled = false
+                onDismissStarts()
             }
             animator[foregroundContainerView, \.center].velocity = velocity
             if isMatched {
@@ -301,6 +318,14 @@ open class MatchTransition: NSObject, Transition {
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
             context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
+    }
+
+    func onDismissStarts() {
+        guard let context else { return }
+        context.container.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        foregroundContainerView.isUserInteractionEnabled = false
+        overlayView.isUserInteractionEnabled = false
     }
 }
 
@@ -330,5 +355,76 @@ extension MatchTransition: UIGestureRecognizerDelegate {
             return true
         }
         return false
+    }
+}
+
+class MatchTransitionContainerView: UIView {
+    var childController: UIViewController
+
+    init(viewController: UIViewController) {
+        childController = viewController
+        super.init(frame: .zero)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        childController.view.frameWithoutTransform = bounds
+    }
+}
+
+class ContainerManager {
+    static let shared = ContainerManager()
+
+    class ContainerContext {
+        let container: MatchTransitionContainerView
+        var presentedCount: Int = 0
+        var transitionCount: Int = 0
+        init(viewController: UIViewController) {
+            container = MatchTransitionContainerView(viewController: viewController)
+        }
+    }
+
+    var containers: [UIViewController: ContainerContext] = [:]
+
+    func containerViewFor(viewController: UIViewController) -> UIView {
+        self[viewController].container
+    }
+
+    func startTransition(viewController: UIViewController) {
+        self[viewController].transitionCount += 1
+        if viewController.view.superview != self[viewController].container {
+            self[viewController].container.insertSubview(viewController.view, at: 0)
+            self[viewController].container.setNeedsLayout()
+            self[viewController].container.layoutIfNeeded()
+        }
+    }
+
+    func endTransition(viewController: UIViewController, didShow: Bool) {
+        self[viewController].transitionCount -= 1
+        self[viewController].presentedCount += didShow ? 1 : -1
+    }
+
+    func isContainerInUsed(viewController: UIViewController) -> Bool {
+        self[viewController].transitionCount > 0 || self[viewController].presentedCount > 0
+    }
+
+    func cleanupContainer(viewController: UIViewController) {
+        containers[viewController] = nil
+    }
+
+    subscript(viewController: UIViewController) -> ContainerContext {
+        get {
+            if containers[viewController] == nil {
+                containers[viewController] = ContainerContext(viewController: viewController)
+            }
+            return containers[viewController]!
+        }
+        set {
+            containers[viewController] = newValue
+        }
     }
 }

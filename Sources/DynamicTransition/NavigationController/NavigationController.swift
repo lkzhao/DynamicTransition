@@ -145,11 +145,6 @@ open class NavigationController: UIViewController, EventReceiver {
         case .navigate(let navigationAction):
             let source = state.viewControllers
             let target = navigationAction.target(from: source)
-//            guard state.transition == nil else {
-//                state.nextAction = navigationAction
-//                return .none
-//            }
-//            state.nextAction = nil
             guard target != source, let to = target.last, let from = source.last else { return .none }
             guard from != to else {
                 state.children = target
@@ -159,9 +154,16 @@ open class NavigationController: UIViewController, EventReceiver {
             let foreground = isPresenting ? to : from
             let background = isPresenting ? from : to
             let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? PushTransition()
-            let container = TransitionContainerView(frame: view.bounds)
+
+            guard state.transitions.isEmpty || state.transitions.allSatisfy({ $0.transition.canTransitionSimutanously(with: transition) && transition.canTransitionSimutanously(with: $0.transition) }) else {
+                // can't transition simutanously
+                state.nextAction = navigationAction
+                return .none
+            }
+            state.nextAction = nil
+
             let isInteractiveStart = transition.wantsInteractiveStart
-            let context = NavigationTransitionContext(container: container, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart, store: store)
+            let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart, store: store)
             let transitionState = State.TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
             print("Begin Transition \(from) \(to)")
@@ -172,8 +174,6 @@ open class NavigationController: UIViewController, EventReceiver {
 
                 from.willMove(toParent: nil)
                 self.addChild(to)
-                self.view.addSubview(container)
-                container.addSubview(to.view)
                 transition.animateTransition(context: context)
             }
         case .didCompleteTransition(let context):
@@ -181,39 +181,41 @@ open class NavigationController: UIViewController, EventReceiver {
             let transitionState = state.transitions.remove(at: index)
             state.children = transitionState.target
             print("Complete Transition \(transitionState.source.last!) \(transitionState.target.last!)")
+            let nextAction = state.nextAction
             return .run {
                 self.view.setNeedsLayout()
                 if let source = transitionState.source.last {
-                    source.view.removeFromSuperview()
                     source.removeFromParent()
                     source.endAppearanceTransition()
                 }
                 if let target = transitionState.target.last {
-                    self.view.insertSubview(target.view, aboveSubview: transitionState.context.container)
                     target.didMove(toParent: self)
                     target.endAppearanceTransition()
                 }
-                transitionState.context.container.removeFromSuperview()
+                if let nextAction {
+                    self.store.send(.navigate(nextAction))
+                }
             }
         case .didCancelTransition(let context):
             guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { return .none }
             let transitionState = state.transitions.remove(at: index)
             state.children = transitionState.source
             print("Cancel Transition \(transitionState.source.last!) \(transitionState.target.last!)")
+            let nextAction = state.nextAction
             return .run {
+                self.view.setNeedsLayout()
                 if let target = transitionState.target.last {
                     target.beginAppearanceTransition(false, animated: false)
-                    target.view.removeFromSuperview()
                     target.removeFromParent()
                     target.endAppearanceTransition()
                 }
                 if let source = transitionState.source.last {
-                    self.view.insertSubview(source.view, aboveSubview: transitionState.context.container)
                     source.didMove(toParent: self)
                     source.endAppearanceTransition()
                 }
-                transitionState.context.container.removeFromSuperview()
-                self.view.setNeedsLayout()
+                if let nextAction {
+                    self.store.send(.navigate(nextAction))
+                }
             }
         }
     }
@@ -268,8 +270,4 @@ open class NavigationController: UIViewController, EventReceiver {
     open override var childViewControllerForPointerLock: UIViewController? {
         viewControllers.last
     }
-}
-
-class TransitionContainerView: UIView {
-
 }

@@ -65,6 +65,9 @@ open class PushTransition: NSObject, Transition {
         self.animator = animator
         if !isInteractive {
             animator.animateTo(position: context.isPresenting ? .presented : .dismissed)
+            if !context.isPresenting {
+                onDismissStarts()
+            }
         }
     }
 
@@ -115,14 +118,19 @@ open class PushTransition: NSObject, Transition {
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x > 80
             if shouldDismiss {
-                context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-                context.foregroundView.isUserInteractionEnabled = false
-                overlayView?.isUserInteractionEnabled = false
+                onDismissStarts()
             }
             animator[context.foregroundView, \.translationX].velocity = velocity.x
             animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
             context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
+    }
+
+    func onDismissStarts() {
+        guard let context else { return }
+        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        context.foregroundView.isUserInteractionEnabled = false
+        overlayView?.isUserInteractionEnabled = false
     }
 }
 
