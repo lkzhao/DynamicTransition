@@ -157,14 +157,14 @@ open class MatchTransition: NSObject, Transition {
         let containerDismissedFrame = dismissedFrame
 
         let scaledSize = presentedFrame.size.size(fill: dismissedFrame.size)
-        let scale = scaledSize.width / container.bounds.width
+        let dismissedScale = scaledSize.width / container.bounds.width
         let sizeOffset = -(scaledSize - dismissedFrame.size) / 2
-        let originOffset = -presentedFrame.minY * scale
-        let offsetX = -(1 - scale) / 2 * container.bounds.width
-        let offsetY = -(1 - scale) / 2 * container.bounds.height
-        let offset = CGPoint(
-            x: offsetX + sizeOffset.width,
-            y: offsetY + sizeOffset.height + originOffset)
+        let originOffset = -presentedFrame.minY * dismissedScale
+        let dismissedOffsetX = -(1 - dismissedScale) / 2 * container.bounds.width
+        let dismissedOffsetY = -(1 - dismissedScale) / 2 * container.bounds.height
+        let dismissedOffset = CGPoint(
+            x: dismissedOffsetX + sizeOffset.width,
+            y: dismissedOffsetY + sizeOffset.height + originOffset)
 
         let foregroundView = context.foregroundView
 
@@ -179,9 +179,9 @@ open class MatchTransition: NSObject, Transition {
         animator[foregroundContainerView, \.center].presentedValue =  containerPresentedFrame.center
         animator[foregroundContainerView, \.center].dismissedValue = containerDismissedFrame.center
         animator[foregroundView, \.translation].presentedValue =  .zero
-        animator[foregroundView, \.translation].dismissedValue = offset
-        animator[foregroundView, \.scale].presentedValue =  1
-        animator[foregroundView, \.scale].dismissedValue = scale
+        animator[foregroundView, \.translation].dismissedValue = dismissedOffset
+        animator[foregroundView, \.scale].presentedValue = 1
+        animator[foregroundView, \.scale].dismissedValue = dismissedScale
         if let sourceViewSnapshot {
             animator[sourceViewSnapshot, \.bounds.size].presentedValue = presentedFrame.size
             animator[sourceViewSnapshot, \.bounds.size].dismissedValue = dismissedFrame.size
