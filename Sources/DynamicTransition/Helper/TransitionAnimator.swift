@@ -48,7 +48,7 @@ class TransitionAnimator {
             return animator
         } else {
             let animation = SpringAnimation(initialValue: view[keyPath: keyPath])
-            animation.configure(response: 2.0, dampingRatio: 0.9)
+            animation.configure(response: 0.45, dampingRatio: 0.9)
             animation.onValueChanged { [weak view] value in
                 view?[keyPath: keyPath] = value
             }
