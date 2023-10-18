@@ -22,12 +22,19 @@ public protocol Transition: AnyObject {
     // Default: false
     func canTransitionSimutanously(with transition: Transition) -> Bool
 
+    // Optional. Reverse the transition if possible.
+    // This method needs to call `context.beginInteractiveTransition()` and
+    // `context.endInteractiveTransition(_ isCompleting: Bool)`
+    // if it can execute the reversal
     func reverse()
 }
 
 extension Transition {
     public var wantsInteractiveStart: Bool { false }
     public func canTransitionSimutanously(with transition: Transition) -> Bool { false }
+    public func reverse() {
+        // no-op
+    }
 }
 
 public protocol TransitionContext {

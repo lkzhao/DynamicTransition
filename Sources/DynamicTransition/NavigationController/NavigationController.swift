@@ -152,10 +152,12 @@ open class NavigationController: UIViewController, EventReceiver {
             let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? PushTransition()
 
             if let transitionState = state.transitions.first(where: { $0.transition === transition }) {
+                // the transition is already running
                 if transitionState.target == source, transitionState.source == target {
-                    // reverse transition
+                    // reverse the transition
                     transitionState.transition.reverse()
-                } // otherwise just ignore
+                }
+                // otherwise just ignore
                 return .none
             }
 
@@ -169,7 +171,6 @@ open class NavigationController: UIViewController, EventReceiver {
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart, store: store)
             let transitionState = State.TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
-            print("Begin Transition \(from) \(to)")
 
             return .run {
                 from.beginAppearanceTransition(false, animated: true)
@@ -183,7 +184,6 @@ open class NavigationController: UIViewController, EventReceiver {
             guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { return .none }
             let transitionState = state.transitions.remove(at: index)
             state.children = transitionState.target
-            print("Complete Transition \(transitionState.source.last!) \(transitionState.target.last!)")
             let nextAction = state.nextAction
             state.nextAction = nil
             return .run {
@@ -204,7 +204,6 @@ open class NavigationController: UIViewController, EventReceiver {
             guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { return .none }
             let transitionState = state.transitions.remove(at: index)
             state.children = transitionState.source
-            print("Cancel Transition \(transitionState.source.last!) \(transitionState.target.last!)")
             let nextAction = state.nextAction
             state.nextAction = nil
             return .run {
