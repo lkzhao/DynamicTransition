@@ -12,6 +12,15 @@ import simd
 public enum TransitionEndPosition {
     case dismissed
     case presented
+
+    var reversed: Self {
+        switch self {
+        case .dismissed:
+            return .presented
+        case .presented:
+            return .dismissed
+        }
+    }
 }
 
 class TransitionAnimator {
@@ -39,7 +48,7 @@ class TransitionAnimator {
             return animator
         } else {
             let animation = SpringAnimation(initialValue: view[keyPath: keyPath])
-            animation.configure(stiffness: 300, damping: 30)
+            animation.configure(response: 2.0, dampingRatio: 0.9)
             animation.onValueChanged { [weak view] value in
                 view?[keyPath: keyPath] = value
             }
@@ -89,7 +98,7 @@ class TransitionAnimator {
 }
 
 public class TransitionPropertyAnimator<Value: SIMDRepresentable> {
-    public let animation: Motion.SpringAnimation<Value>
+    public let animation: Motion.ValueAnimation<Value>
 
     public var presentedValue: Value {
         didSet {
@@ -127,7 +136,7 @@ public class TransitionPropertyAnimator<Value: SIMDRepresentable> {
     }
     public private(set) var targetPosition: TransitionEndPosition?
 
-    fileprivate init(animation: Motion.SpringAnimation<Value>) {
+    fileprivate init(animation: Motion.ValueAnimation<Value>) {
         self.animation = animation
         self.presentedValue = animation.value
         self.dismissedValue = animation.value
@@ -155,7 +164,6 @@ extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
         if animation.value.simdRepresentation().approximatelyEqual(to: value.simdRepresentation(), epsilon: epsilon) {
             completion()
         } else {
-            animation.configure(stiffness: 300, damping: 30)
             animation.toValue = value
             animation.resolvingEpsilon = epsilon
             animation.completion = completion

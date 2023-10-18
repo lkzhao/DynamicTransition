@@ -57,12 +57,9 @@ open class MatchTransition: NSObject, Transition {
         $0.delegate = self
     }
 
-    var isTransitioningVertically = false
-
     private var context: TransitionContext?
     private var animator: TransitionAnimator?
     private var isInteractive: Bool = false
-    private var startTime: TimeInterval = 0
     
     let foregroundContainerView = ShadowContainerView()
     var matchedSourceView: UIView?
@@ -85,11 +82,9 @@ open class MatchTransition: NSObject, Transition {
     }
 
     public func animateTransition(context: TransitionContext) {
-        print("Start transition isPresenting: \(context.isPresenting)")
         guard self.context == nil else {
             return
         }
-        startTime = CACurrentMediaTime()
         self.context = context
 
         CATransaction.begin()
@@ -107,14 +102,16 @@ open class MatchTransition: NSObject, Transition {
         overlayView.frame = container.bounds
         overlayView.isUserInteractionEnabled = true
 
-        container.addSubview(backgroundView)
+        if backgroundView.window == nil {
+            container.addSubview(backgroundView)
+        }
         backgroundView.addSubview(overlayView)
         backgroundView.addSubview(foregroundContainerView)
         foregroundContainerView.contentView.addSubview(foregroundView)
         foregroundContainerView.lockSafeAreaInsets = true
 
-        ContainerManager.shared.startTransition(viewController: background)
-        ContainerManager.shared.startTransition(viewController: foreground)
+        ContainerManager.shared.startTransition(viewController: background, isSource: context.isPresenting)
+        ContainerManager.shared.startTransition(viewController: foreground, isSource: !context.isPresenting)
 
         let matchedDestinationView = context.foreground.findObjectMatchType(MatchTransitionDelegate.self)?
             .matchedViewFor(transition: context, otherViewController: context.background)
@@ -126,7 +123,7 @@ open class MatchTransition: NSObject, Transition {
 
         if let matchedSourceView, let sourceViewSnapshot = matchedSourceView.snapshotView(afterScreenUpdates: true) {
             sourceViewSnapshot.isUserInteractionEnabled = false
-            foregroundContainerView.contentView.addSubview(sourceViewSnapshot)
+            foregroundView.addSubview(sourceViewSnapshot)
             self.sourceViewSnapshot = sourceViewSnapshot
             matchedSourceView.isHidden = true
             if let parentScrollView = matchedSourceView.superview as? UIScrollView {
@@ -151,15 +148,32 @@ open class MatchTransition: NSObject, Transition {
         }
     }
 
-    func calculateEndStates() {
-        guard let context, let animator else { return }
+    public func reverse() {
+        guard let context, let targetPosition = animator?.targetPosition else { return }
+        let isPresenting = targetPosition.reversed == .presented
+        beginInteractiveTransition()
+        animateTo(position: targetPosition.reversed)
+        context.endInteractiveTransition(context.isPresenting == isPresenting)
+    }
+
+    func calculateDismissedFrame() -> CGRect? {
+        guard let context else { return nil }
         let container = context.container
-        let defaultDismissedFrame = isTransitioningVertically ? container.bounds.offsetBy(dx: 0, dy: container.bounds.height) : container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
+        let backgroundView = ContainerManager.shared.containerViewFor(viewController: context.background)
         let dismissedFrame = matchedSourceView.map {
-            container.convert($0.bounds, from: $0)
-        } ?? defaultDismissedFrame
+            backgroundView.convert($0.bounds, from: $0)
+        } ?? container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
+        return dismissedFrame
+    }
+
+    func calculateEndStates() {
+        guard let context, let animator, let dismissedFrame = calculateDismissedFrame() else { return }
+        let container = context.container
+        let backgroundView = ContainerManager.shared.containerViewFor(viewController: context.background)
+        let foregroundView = ContainerManager.shared.containerViewFor(viewController: context.foreground)
+
         let presentedFrame = isMatched ? matchedDestinationView.map {
-            container.convert($0.bounds, from: $0)
+            backgroundView.convert($0.bounds, from: $0)
         } ?? container.bounds : container.bounds
 
         let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
@@ -178,8 +192,6 @@ open class MatchTransition: NSObject, Transition {
             x: dismissedOffsetX + sizeOffset.width,
             y: dismissedOffsetY + sizeOffset.height + originOffset)
 
-        let foregroundView = context.foregroundView
-
         animator[overlayView, \.alpha].presentedValue = 1
         animator[overlayView, \.alpha].dismissedValue = 0
         animator[foregroundContainerView, \.shadowOpacity].presentedValue = 1
@@ -194,11 +206,12 @@ open class MatchTransition: NSObject, Transition {
         animator[foregroundView, \.translation].dismissedValue = dismissedOffset
         animator[foregroundView, \.scale].presentedValue = 1
         animator[foregroundView, \.scale].dismissedValue = dismissedScale
+
         if let sourceViewSnapshot {
             animator[sourceViewSnapshot, \.bounds.size].presentedValue = presentedFrame.size
-            animator[sourceViewSnapshot, \.bounds.size].dismissedValue = dismissedFrame.size
+            animator[sourceViewSnapshot, \.bounds.size].dismissedValue = presentedFrame.size
             animator[sourceViewSnapshot, \.center].presentedValue = presentedFrame.center
-            animator[sourceViewSnapshot, \.center].dismissedValue = dismissedFrame.bounds.center
+            animator[sourceViewSnapshot, \.center].dismissedValue = presentedFrame.center
             animator[sourceViewSnapshot, \.alpha].presentedValue = 0
             animator[sourceViewSnapshot, \.alpha].dismissedValue = 1
         }
@@ -206,32 +219,24 @@ open class MatchTransition: NSObject, Transition {
 
     func didCompleteTransitionAnimation(position: TransitionEndPosition) {
         guard let context else { return }
-        let duration = CACurrentMediaTime() - startTime
         let didPresent = position == .presented
+        let didComplete = didPresent == context.isPresenting
 
-        ContainerManager.shared.endTransition(viewController: context.background, didShow: !didPresent)
-        ContainerManager.shared.endTransition(viewController: context.foreground, didShow: didPresent)
-        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = true
+        ContainerManager.shared.endTransition(viewController: context.background, didShow: !didPresent, didComplete: didComplete)
+        ContainerManager.shared.endTransition(viewController: context.foreground, didShow: didPresent, didComplete: didComplete)
         if didPresent {
-            context.container.addSubview(ContainerManager.shared.containerViewFor(viewController: context.foreground))
-            if !ContainerManager.shared.isContainerInUsed(viewController: context.background) {
-                ContainerManager.shared.containerViewFor(viewController: context.background).removeFromSuperview()
-                ContainerManager.shared.cleanupContainer(viewController: context.background)
-            }
-        } else {
-            if !ContainerManager.shared.isContainerInUsed(viewController: context.foreground) {
-                ContainerManager.shared.containerViewFor(viewController: context.foreground).removeFromSuperview()
-                ContainerManager.shared.cleanupContainer(viewController: context.foreground)
-            }
+            // move foregroundView view out of the foregroundContainerView
+            let foregroundView = ContainerManager.shared.containerViewFor(viewController: context.foreground)
+            foregroundContainerView.superview?.insertSubview(foregroundView, aboveSubview: foregroundContainerView)
         }
+        ContainerManager.shared.cleanupContainers()
         scrollViewObserver = nil
         matchedSourceView?.isHidden = false
         overlayView.removeFromSuperview()
         foregroundContainerView.lockSafeAreaInsets = false
         foregroundContainerView.removeFromSuperview()
+        self.sourceViewSnapshot?.removeFromSuperview()
 
-        verticalDismissGestureRecognizer.isEnabled = true
-        horizontalDismissGestureRecognizer.isEnabled = true
         interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
         interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
         interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
@@ -241,15 +246,14 @@ open class MatchTransition: NSObject, Transition {
         self.isInteractive = false
         self.sourceViewSnapshot = nil
 
-        print("Complete transition didPresent:\(didPresent) duration:\(duration)")
-        context.completeTransition(didPresent == context.isPresenting)
+        context.completeTransition(didComplete)
     }
 
     func targetDidChange() {
-        guard let animator, let targetPosition = animator.targetPosition, targetPosition == .dismissed else { return }
+        guard let animator, let targetPosition = animator.targetPosition, targetPosition == .dismissed, let newDismissedFrame = calculateDismissedFrame() else { return }
         let oldContainerCenter = animator[foregroundContainerView, \.center].dismissedValue
-        calculateEndStates()
-        let newContainerCenter = animator[foregroundContainerView, \.center].dismissedValue
+        let newContainerCenter = newDismissedFrame.center
+        animator[foregroundContainerView, \.center].dismissedValue = newContainerCenter
         let diff = newContainerCenter - oldContainerCenter
         if diff != .zero {
             let newCenter = foregroundContainerView.center + diff
@@ -317,11 +321,8 @@ open class MatchTransition: NSObject, Transition {
     }
 
     @objc func handleTap() {
-        guard let context else { return }
         options.onDragStart?(self)
-        beginInteractiveTransition()
-        animateTo(position: .presented)
-        context.endInteractiveTransition(context.isPresenting)
+        reverse()
     }
 
     func animateTo(position: TransitionEndPosition) {
@@ -342,8 +343,8 @@ open class MatchTransition: NSObject, Transition {
         guard let context else { return }
         interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
         interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-        foregroundContainerView.addGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
-        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = false
+        context.container.addGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
+        foregroundContainerView.isUserInteractionEnabled = false
         overlayView.isUserInteractionEnabled = false
     }
 
@@ -352,7 +353,7 @@ open class MatchTransition: NSObject, Transition {
         context.container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
         context.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
         interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
-        ContainerManager.shared.containerViewFor(viewController: context.foreground).isUserInteractionEnabled = true
+        foregroundContainerView.isUserInteractionEnabled = true
         overlayView.isUserInteractionEnabled = true
     }
 }
@@ -360,18 +361,16 @@ open class MatchTransition: NSObject, Transition {
 extension MatchTransition: UIGestureRecognizerDelegate {
     open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer == interruptibleTapRepresentGestureRecognizer {
-            return true
+            return foregroundContainerView.point(inside: gestureRecognizer.location(in: foregroundContainerView), with: nil)
         }
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
         if gestureRecognizer == interruptibleVerticalDismissGestureRecognizer || gestureRecognizer == verticalDismissGestureRecognizer {
             if velocity.y > abs(velocity.x) {
-                isTransitioningVertically = true
                 return true
             }
         } else if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
             if velocity.x > abs(velocity.y) {
-                isTransitioningVertically = false
                 return true
             }
         }
@@ -419,14 +418,17 @@ class ContainerManager {
         }
     }
 
-    var containers: [UIViewController: ContainerContext] = [:]
+    private var containers: [UIViewController: ContainerContext] = [:]
 
     func containerViewFor(viewController: UIViewController) -> UIView {
         self[viewController].container
     }
 
-    func startTransition(viewController: UIViewController) {
+    func startTransition(viewController: UIViewController, isSource: Bool) {
         self[viewController].transitionCount += 1
+        if isSource, self[viewController].presentedCount == 0 {
+            self[viewController].presentedCount = 1 // source should be already presented
+        }
         if viewController.view.superview != self[viewController].container {
             self[viewController].container.insertSubview(viewController.view, at: 0)
             self[viewController].container.setNeedsLayout()
@@ -434,20 +436,33 @@ class ContainerManager {
         }
     }
 
-    func endTransition(viewController: UIViewController, didShow: Bool) {
+    func endTransition(viewController: UIViewController, didShow: Bool, didComplete: Bool) {
         self[viewController].transitionCount -= 1
-        self[viewController].presentedCount += didShow ? 1 : -1
+        self[viewController].presentedCount += didComplete ? didShow ? 1 : -1 : 0
     }
 
-    func isContainerInUsed(viewController: UIViewController) -> Bool {
-        self[viewController].transitionCount > 0 || self[viewController].presentedCount > 0
+    func cleanupContainers() {
+        var toBeRemoved: [UIViewController] = []
+        var toKeepContainers: Set<UIView> = containers.values.map {
+            $0.container
+        }.set
+        for (vc, context) in containers {
+            if context.transitionCount <= 0 && context.presentedCount <= 0 {
+                toBeRemoved.append(vc)
+                toKeepContainers.remove(context.container)
+            }
+        }
+        for toBeRemove in toBeRemoved {
+            guard let context = containers[toBeRemove] else { continue }
+            for childToKeep in context.container.subviews.filter({ toKeepContainers.contains($0) }) {
+                context.container.superview?.insertSubview(childToKeep, aboveSubview: context.container)
+            }
+            context.container.removeFromSuperview()
+            containers[toBeRemove] = nil
+        }
     }
 
-    func cleanupContainer(viewController: UIViewController) {
-        containers[viewController] = nil
-    }
-
-    subscript(viewController: UIViewController) -> ContainerContext {
+    private subscript(viewController: UIViewController) -> ContainerContext {
         get {
             if containers[viewController] == nil {
                 containers[viewController] = ContainerContext(viewController: viewController)

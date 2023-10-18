@@ -31,6 +31,10 @@ open class PushTransition: NSObject, Transition {
         isInteractive
     }
 
+    public func canTransitionSimutanously(with transition: Transition) -> Bool {
+        transition is PushTransition
+    }
+
     public func animateTransition(context: TransitionContext) {
         let container = context.container
         let foregroundView = context.foregroundView
@@ -42,9 +46,13 @@ open class PushTransition: NSObject, Transition {
 
         foregroundView.frame = container.bounds
 
-        container.addSubview(backgroundView)
-        container.addSubview(overlayView)
-        container.addSubview(foregroundView)
+        if foregroundView.superview == container {
+            container.insertSubview(backgroundView, belowSubview: foregroundView)
+        } else if backgroundView.superview != container {
+            container.addSubview(backgroundView)
+        }
+        container.insertSubview(overlayView, aboveSubview: backgroundView)
+        container.insertSubview(foregroundView, aboveSubview: overlayView)
         container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
 
         foregroundView.setNeedsLayout()
@@ -64,11 +72,16 @@ open class PushTransition: NSObject, Transition {
         self.overlayView = overlayView
         self.animator = animator
         if !isInteractive {
-            animator.animateTo(position: context.isPresenting ? .presented : .dismissed)
-            if !context.isPresenting {
-                onDismissStarts()
-            }
+            animateTo(position: context.isPresenting ? .presented : .dismissed)
         }
+    }
+
+    public func reverse() {
+        guard let context, let targetPosition = animator?.targetPosition else { return }
+        let isPresenting = targetPosition.reversed == .presented
+        beginInteractiveTransition()
+        animateTo(position: targetPosition.reversed)
+        context.endInteractiveTransition(context.isPresenting == isPresenting)
     }
 
     func didCompleteTransitionAnimation(position: TransitionEndPosition) {
@@ -80,6 +93,11 @@ open class PushTransition: NSObject, Transition {
         self.overlayView?.removeFromSuperview()
         context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
         context.foregroundView.lockSafeAreaInsets = false
+        if didPresent {
+            context.backgroundView.removeFromSuperview()
+        } else {
+            context.foregroundView.removeFromSuperview()
+        }
         context.completeTransition(didPresent == context.isPresenting)
     }
 
@@ -117,20 +135,38 @@ open class PushTransition: NSObject, Transition {
             let velocity = gr.velocity(in: nil)
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x > 80
-            if shouldDismiss {
-                onDismissStarts()
-            }
             animator[context.foregroundView, \.translationX].velocity = velocity.x
-            animator.animateTo(position: shouldDismiss ? .dismissed : .presented)
+            animateTo(position: shouldDismiss ? .dismissed : .presented)
             context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
     }
 
+    func animateTo(position: TransitionEndPosition) {
+        guard let animator else {
+            assertionFailure()
+            return
+        }
+        switch position {
+        case .dismissed:
+            onDismissStarts()
+        case .presented:
+            onPresentStarts()
+        }
+        animator.animateTo(position: position)
+    }
+
     func onDismissStarts() {
         guard let context else { return }
-        context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
         context.foregroundView.isUserInteractionEnabled = false
         overlayView?.isUserInteractionEnabled = false
+    }
+
+    func onPresentStarts() {
+        guard let context else { return }
+        context.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+        context.foregroundView.isUserInteractionEnabled = true
+        overlayView?.isUserInteractionEnabled = true
     }
 }
 

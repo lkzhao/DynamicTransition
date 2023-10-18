@@ -7,7 +7,7 @@ public protocol TransitionProvider {
     func transitionFor(presenting: Bool, otherViewController: UIViewController) -> Transition?
 }
 
-public protocol Transition {
+public protocol Transition: AnyObject {
     // Required
     func animateTransition(context: TransitionContext)
 
@@ -21,6 +21,8 @@ public protocol Transition {
     // Whether or not the transition can be performed simutanously with another transition
     // Default: false
     func canTransitionSimutanously(with transition: Transition) -> Bool
+
+    func reverse()
 }
 
 extension Transition {

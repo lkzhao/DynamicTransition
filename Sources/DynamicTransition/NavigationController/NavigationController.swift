@@ -20,12 +20,8 @@ open class NavigationController: UIViewController, EventReceiver {
         var nextAction: Event.NavigationAction?
 
         var viewControllers: [UIViewController] {
-            if let transition = transitions.last {
-                if transition.context.isCompleting {
-                    return transition.target
-                } else {
-                    return transition.source
-                }
+            if let transition = transitions.last(where: { $0.context.isCompleting }) {
+                return transition.target
             } else {
                 return children
             }
@@ -155,12 +151,19 @@ open class NavigationController: UIViewController, EventReceiver {
             let background = isPresenting ? from : to
             let transition: Transition = foreground.findObjectMatchType(TransitionProvider.self)?.transitionFor(presenting: isPresenting, otherViewController: background) ?? PushTransition()
 
+            if let transitionState = state.transitions.first(where: { $0.transition === transition }) {
+                if transitionState.target == source, transitionState.source == target {
+                    // reverse transition
+                    transitionState.transition.reverse()
+                } // otherwise just ignore
+                return .none
+            }
+
             guard state.transitions.isEmpty || state.transitions.allSatisfy({ $0.transition.canTransitionSimutanously(with: transition) && transition.canTransitionSimutanously(with: $0.transition) }) else {
                 // can't transition simutanously
                 state.nextAction = navigationAction
                 return .none
             }
-            state.nextAction = nil
 
             let isInteractiveStart = transition.wantsInteractiveStart
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart, store: store)
@@ -182,6 +185,7 @@ open class NavigationController: UIViewController, EventReceiver {
             state.children = transitionState.target
             print("Complete Transition \(transitionState.source.last!) \(transitionState.target.last!)")
             let nextAction = state.nextAction
+            state.nextAction = nil
             return .run {
                 self.view.setNeedsLayout()
                 if let source = transitionState.source.last {
@@ -202,6 +206,7 @@ open class NavigationController: UIViewController, EventReceiver {
             state.children = transitionState.source
             print("Cancel Transition \(transitionState.source.last!) \(transitionState.target.last!)")
             let nextAction = state.nextAction
+            state.nextAction = nil
             return .run {
                 self.view.setNeedsLayout()
                 if let target = transitionState.target.last {
@@ -223,7 +228,7 @@ open class NavigationController: UIViewController, EventReceiver {
     open override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         for subview in view.subviews {
-            subview.frame = view.bounds
+            subview.frameWithoutTransform = view.bounds
         }
     }
 
