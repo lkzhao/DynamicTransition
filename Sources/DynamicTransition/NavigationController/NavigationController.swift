@@ -61,7 +61,7 @@ open class NavigationController: UIViewController {
             }
         }
 
-        case navigate(NavigationAction)
+        case navigate(NavigationAction, Bool)
         case didCompleteTransition(NavigationTransitionContext)
         case didCancelTransition(NavigationTransitionContext)
     }
@@ -147,7 +147,7 @@ open class NavigationController: UIViewController {
         var runBlock: (() -> Void)? = nil
 
         switch event {
-        case .navigate(let navigationAction):
+        case .navigate(let navigationAction, let animated):
             let source = displayState.views
             let target = navigationAction.target(from: source)
             guard target != source, let to = target.last, let from = source.last else { break }
@@ -155,7 +155,20 @@ open class NavigationController: UIViewController {
                 state.children = target
                 break
             }
-            let isPresenting = target.count > source.count
+            guard animated else {
+                state.children = target
+                runBlock = {
+                    (from as? RootViewType)?.willDisappear(animated: false)
+                    (to as? RootViewType)?.willAppear(animated: false)
+                    from.removeFromSuperview()
+                    self.view.addSubview(to)
+                    self.didUpdateViews()
+                    (from as? RootViewType)?.didDisappear(animated: false)
+                    (to as? RootViewType)?.didAppear(animated: false)
+                }
+                break
+            }
+            let isPresenting = target.count >= source.count
             let foreground = isPresenting ? to : from
             let background = isPresenting ? from : to
             let transition: Transition = (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? PushTransition()
@@ -203,7 +216,7 @@ open class NavigationController: UIViewController {
                 }
                 self.didUpdateViews()
                 if let nextAction {
-                    self.process(.navigate(nextAction))
+                    self.process(.navigate(nextAction, true))
                 }
             }
         case .didCancelTransition(let context):
@@ -223,7 +236,7 @@ open class NavigationController: UIViewController {
                 }
                 self.didUpdateViews()
                 if let nextAction {
-                    self.process(.navigate(nextAction))
+                    self.process(.navigate(nextAction, true))
                 }
             }
         }
@@ -264,23 +277,23 @@ open class NavigationController: UIViewController {
     // MARK: - Navigation methods
 
     open func pushView(_ view: UIView, animated: Bool) {
-        process(.navigate(.push(view)))
+        process(.navigate(.push(view), animated))
     }
 
     open func popView(animated: Bool) {
-        process(.navigate(.pop))
+        process(.navigate(.pop, animated))
     }
 
     open func popToRootView(animated: Bool) {
-        process(.navigate(.popToRoot))
+        process(.navigate(.popToRoot, animated))
     }
 
     open func dismissToView(_ view: UIView, animated: Bool) {
-        process(.navigate(.dismiss(view)))
+        process(.navigate(.dismiss(view), animated))
     }
 
     open func setViews(_ views: [UIView], animated: Bool) {
-        process(.navigate(.set(views)))
+        process(.navigate(.set(views), animated))
     }
 
     open override var preferredStatusBarStyle: UIStatusBarStyle {
