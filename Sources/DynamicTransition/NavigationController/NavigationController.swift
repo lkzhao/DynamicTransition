@@ -134,7 +134,6 @@ open class NavigationController: UIViewController {
         self.displayState = DisplayState(views: [rootView], preferredStatusBarStyle: (rootView as? RootViewType)?.preferredStatusBarStyle ?? .default)
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
-        view.backgroundColor = .systemBackground
         view.addSubview(rootView)
     }
 
@@ -247,7 +246,7 @@ open class NavigationController: UIViewController {
 
     open override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        for subview in view.subviews {
+        for subview in views {
             subview.frameWithoutTransform = view.bounds
         }
     }
@@ -300,7 +299,7 @@ open class NavigationController: UIViewController {
         displayState.preferredStatusBarStyle
     }
 
-    private func didUpdateViews() {
+    open func didUpdateViews() {
         let newViews: [UIView] = state.transitions.last(where: { $0.context.isCompleting })?.target ?? state.children
         let newStatusBarStyle = (newViews.last as? RootViewType)?.preferredStatusBarStyle ?? .default
         displayState = DisplayState(views: newViews, preferredStatusBarStyle: newStatusBarStyle)

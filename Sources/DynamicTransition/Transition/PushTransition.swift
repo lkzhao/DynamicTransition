@@ -22,20 +22,21 @@ open class PushTransition: NSObject, Transition {
         }
     }
 
-    var context: TransitionContext?
-    var animator: TransitionAnimator?
-    var overlayView: UIView?
-    var isInteractive: Bool = false
+    public var context: TransitionContext?
+    public var animator: TransitionAnimator?
+    public var overlayView: UIView?
+    public var isInteractive: Bool = false
+    public var applyVelocity: Bool = true
 
-    public var wantsInteractiveStart: Bool {
+    open var wantsInteractiveStart: Bool {
         isInteractive
     }
 
-    public func canTransitionSimutanously(with transition: Transition) -> Bool {
+    open func canTransitionSimutanously(with transition: Transition) -> Bool {
         transition is PushTransition
     }
 
-    public func animateTransition(context: TransitionContext) {
+    open func animateTransition(context: TransitionContext) {
         let container = context.container
         let foregroundView = context.foreground
         let backgroundView = context.background
@@ -63,16 +64,24 @@ open class PushTransition: NSObject, Transition {
         animator.addCompletion { position in
             self.didCompleteTransitionAnimation(position: position)
         }
-        animator[foregroundView, \.translationX].dismissedValue = container.bounds.width
-        animator[overlayView, \.alpha].dismissedValue = -1
-        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
-
         self.context = context
         self.overlayView = overlayView
         self.animator = animator
+        
+        animator[foregroundView, \.translationX].dismissedValue = container.bounds.width
+        animator[overlayView, \.alpha].dismissedValue = -1
+
+        transitionWillBegin()
+
+        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
+
         if !isInteractive {
             animateTo(position: context.isPresenting ? .presented : .dismissed)
         }
+    }
+
+    open func transitionWillBegin() {
+
     }
 
     public func reverse() {
@@ -134,7 +143,9 @@ open class PushTransition: NSObject, Transition {
             let velocity = gr.velocity(in: nil)
             let translationPlusVelocity = totalTranslation + velocity / 2
             let shouldDismiss = translationPlusVelocity.x > 80
-            animator[context.foreground, \.translationX].velocity = velocity.x
+            if applyVelocity {
+                animator[context.foreground, \.translationX].velocity = velocity.x
+            }
             animateTo(position: shouldDismiss ? .dismissed : .presented)
             context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
@@ -174,7 +185,7 @@ extension PushTransition: UIGestureRecognizerDelegate {
     open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
-        if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
+        if gestureRecognizer.view?.navigationController?.views.count ?? 0 >= 2, gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
             if velocity.x > abs(velocity.y) {
                 return true
             }
