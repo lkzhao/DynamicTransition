@@ -195,6 +195,9 @@ extension PushTransition: UIGestureRecognizerDelegate {
 
     open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         if otherGestureRecognizer is UIPanGestureRecognizer, let scrollView = otherGestureRecognizer.view as? UIScrollView, otherGestureRecognizer == scrollView.panGestureRecognizer {
+            if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
+                return scrollView.contentOffset.x <= -scrollView.adjustedContentInset.left + 1.0
+            }
             return true
         }
         return false
