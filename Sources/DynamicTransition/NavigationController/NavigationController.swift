@@ -21,7 +21,7 @@ open class NavigationController: UIViewController {
         }
         var children: [UIView]
         var transitions: [TransitionState] = []
-        var nextAction: Event.NavigationAction?
+        var nextAction: (Event.NavigationAction, Bool)?
     }
 
     private struct DisplayState {
@@ -61,7 +61,7 @@ open class NavigationController: UIViewController {
             }
         }
 
-        case navigate(NavigationAction)
+        case navigate(NavigationAction, animated: Bool)
         case didCompleteTransition(NavigationTransitionContext)
         case didCancelTransition(NavigationTransitionContext)
     }
@@ -106,6 +106,8 @@ open class NavigationController: UIViewController {
 
     public weak var delegate: NavigationControllerDelegate?
 
+    public var defaultTransition: Transition = PushTransition()
+
     private var state: State
 
     private var displayState: DisplayState {
@@ -145,7 +147,7 @@ open class NavigationController: UIViewController {
     open func transitionFor(isPresenting: Bool, from: UIView, to: UIView) -> Transition {
         let foreground = isPresenting ? to : from
         let background = isPresenting ? from : to
-        return (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? PushTransition()
+        return (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? defaultTransition
     }
 
     private func process(_ event: Event) {
@@ -153,7 +155,8 @@ open class NavigationController: UIViewController {
         var runBlock: (() -> Void)? = nil
 
         switch event {
-        case .navigate(let navigationAction):
+        case .navigate(let navigationAction, let animated):
+            print(navigationAction)
             let source = displayState.views
             let target = navigationAction.target(from: source)
             guard target != source, let to = target.last, let from = source.last else { break }
@@ -162,9 +165,7 @@ open class NavigationController: UIViewController {
                 break
             }
             let isPresenting = target.count >= source.count
-            let foreground = isPresenting ? to : from
-            let background = isPresenting ? from : to
-            let transition = transitionFor(isPresenting: isPresenting, from: from, to: to)
+            let transition = animated ? transitionFor(isPresenting: isPresenting, from: from, to: to) : NoTransition()
 
             if let transitionState = state.transitions.first(where: { $0.transition === transition }) {
                 // the transition is already running
@@ -178,7 +179,7 @@ open class NavigationController: UIViewController {
 
             guard state.transitions.isEmpty || state.transitions.allSatisfy({ $0.transition.canTransitionSimutanously(with: transition) && transition.canTransitionSimutanously(with: $0.transition) }) else {
                 // can't transition simutanously
-                state.nextAction = navigationAction
+                state.nextAction = (navigationAction, animated)
                 break
             }
 
@@ -208,8 +209,8 @@ open class NavigationController: UIViewController {
                     (target as? RootViewType)?.didAppear(animated: true)
                 }
                 self.didUpdateViews()
-                if let nextAction {
-                    self.process(.navigate(nextAction))
+                if let (navigationAction, animated) = nextAction {
+                    self.process(.navigate(navigationAction, animated: animated))
                 }
             }
         case .didCancelTransition(let context):
@@ -228,8 +229,8 @@ open class NavigationController: UIViewController {
                     (source as? RootViewType)?.didAppear(animated: true)
                 }
                 self.didUpdateViews()
-                if let nextAction {
-                    self.process(.navigate(nextAction))
+                if let (navigationAction, animated) = nextAction {
+                    self.process(.navigate(navigationAction, animated: animated))
                 }
             }
         }
@@ -269,24 +270,24 @@ open class NavigationController: UIViewController {
 
     // MARK: - Navigation methods
 
-    open func pushView(_ view: UIView, animated: Bool) {
-        process(.navigate(.push(view)))
+    open func pushView(_ view: UIView, animated: Bool = true) {
+        process(.navigate(.push(view), animated: animated))
     }
 
-    open func popView(animated: Bool) {
-        process(.navigate(.pop))
+    open func popView(animated: Bool = true) {
+        process(.navigate(.pop, animated: animated))
     }
 
-    open func popToRootView(animated: Bool) {
-        process(.navigate(.popToRoot))
+    open func popToRootView(animated: Bool = true) {
+        process(.navigate(.popToRoot, animated: animated))
     }
 
-    open func dismissToView(_ view: UIView, animated: Bool) {
-        process(.navigate(.dismiss(view)))
+    open func dismissToView(_ view: UIView, animated: Bool = true) {
+        process(.navigate(.dismiss(view), animated: animated))
     }
 
-    open func setViews(_ views: [UIView], animated: Bool) {
-        process(.navigate(.set(views)))
+    open func setViews(_ views: [UIView], animated: Bool = true) {
+        process(.navigate(.set(views), animated: animated))
     }
 
     open override var preferredStatusBarStyle: UIStatusBarStyle {

@@ -9,21 +9,30 @@
 /* Begin PBXBuildFile section */
 		A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */; };
 		A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */; };
-		A3D0A7A52B00842000AC6A73 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A42B00842000AC6A73 /* ViewController.swift */; };
 		A3D0A7AA2B00842100AC6A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7A92B00842100AC6A73 /* Assets.xcassets */; };
 		A3D0A7AD2B00842100AC6A73 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7AB2B00842100AC6A73 /* LaunchScreen.storyboard */; };
 		A3D0A7B72B0084A200AC6A73 /* DynamicTransition in Frameworks */ = {isa = PBXBuildFile; productRef = A3D0A7B62B0084A200AC6A73 /* DynamicTransition */; };
+		B1712C5D2C02B83400B46B91 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = B1712C5C2C02B83400B46B91 /* UIComponent */; };
+		B1712C602C02BB2D00B46B91 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C5F2C02BB2D00B46B91 /* HomeView.swift */; };
+		B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */; };
+		B1712C642C02BB4500B46B91 /* ComponentRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C632C02BB4500B46B91 /* ComponentRootView.swift */; };
+		B1712C662C02BB6800B46B91 /* MatchTransitionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */; };
+		B1712C682C02C24C00B46B91 /* ImageGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C672C02C24C00B46B91 /* ImageGrid.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A3D0A79D2B00842000AC6A73 /* DynamicTransitionExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DynamicTransitionExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		A3D0A7A42B00842000AC6A73 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		A3D0A7A92B00842100AC6A73 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A3D0A7AC2B00842100AC6A73 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A3D0A7AE2B00842100AC6A73 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3D0A7B42B00842800AC6A73 /* DynamicTransition */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = DynamicTransition; path = ../../..; sourceTree = "<group>"; };
+		B1712C5F2C02BB2D00B46B91 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTransitionDetailView.swift; sourceTree = "<group>"; };
+		B1712C632C02BB4500B46B91 /* ComponentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentRootView.swift; sourceTree = "<group>"; };
+		B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchTransitionDetailView.swift; sourceTree = "<group>"; };
+		B1712C672C02C24C00B46B91 /* ImageGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGrid.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1712C5D2C02B83400B46B91 /* UIComponent in Frameworks */,
 				A3D0A7B72B0084A200AC6A73 /* DynamicTransition in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,7 +71,7 @@
 				A3D0A7B42B00842800AC6A73 /* DynamicTransition */,
 				A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */,
 				A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */,
-				A3D0A7A42B00842000AC6A73 /* ViewController.swift */,
+				B1712C5E2C02BB0B00B46B91 /* View */,
 				A3D0A7A92B00842100AC6A73 /* Assets.xcassets */,
 				A3D0A7AB2B00842100AC6A73 /* LaunchScreen.storyboard */,
 				A3D0A7AE2B00842100AC6A73 /* Info.plist */,
@@ -74,6 +84,18 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		B1712C5E2C02BB0B00B46B91 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				B1712C5F2C02BB2D00B46B91 /* HomeView.swift */,
+				B1712C672C02C24C00B46B91 /* ImageGrid.swift */,
+				B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */,
+				B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */,
+				B1712C632C02BB4500B46B91 /* ComponentRootView.swift */,
+			);
+			path = View;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -94,6 +116,7 @@
 			name = DynamicTransitionExample;
 			packageProductDependencies = (
 				A3D0A7B62B0084A200AC6A73 /* DynamicTransition */,
+				B1712C5C2C02B83400B46B91 /* UIComponent */,
 			);
 			productName = DynamicTransitionExample;
 			productReference = A3D0A79D2B00842000AC6A73 /* DynamicTransitionExample.app */;
@@ -123,6 +146,9 @@
 				Base,
 			);
 			mainGroup = A3D0A7942B00842000AC6A73;
+			packageReferences = (
+				B1712C5B2C02B83400B46B91 /* XCRemoteSwiftPackageReference "UIComponent" */,
+			);
 			productRefGroup = A3D0A79E2B00842000AC6A73 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -149,8 +175,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A3D0A7A52B00842000AC6A73 /* ViewController.swift in Sources */,
+				B1712C602C02BB2D00B46B91 /* HomeView.swift in Sources */,
+				B1712C642C02BB4500B46B91 /* ComponentRootView.swift in Sources */,
+				B1712C662C02BB6800B46B91 /* MatchTransitionDetailView.swift in Sources */,
 				A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */,
+				B1712C682C02C24C00B46B91 /* ImageGrid.swift in Sources */,
+				B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */,
 				A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -365,10 +395,26 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		B1712C5B2C02B83400B46B91 /* XCRemoteSwiftPackageReference "UIComponent" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/lkzhao/UIComponent";
+			requirement = {
+				kind = exactVersion;
+				version = "4.0.0-beta-4";
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		A3D0A7B62B0084A200AC6A73 /* DynamicTransition */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DynamicTransition;
+		};
+		B1712C5C2C02B83400B46B91 /* UIComponent */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1712C5B2C02B83400B46B91 /* XCRemoteSwiftPackageReference "UIComponent" */;
+			productName = UIComponent;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

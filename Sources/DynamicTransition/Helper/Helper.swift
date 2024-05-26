@@ -59,6 +59,16 @@ extension UIView {
 }
 
 extension UIView {
+    var flattendSuperviews: [UIView] {
+        if let superview {
+            return [superview] + superview.flattendSuperviews
+        } else {
+            return []
+        }
+    }
+}
+
+extension UIView {
     public var translationX: CGFloat {
         get {
             value(forKeyPath: "layer.transform.translation.x") as? CGFloat ?? 0

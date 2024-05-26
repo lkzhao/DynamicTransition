@@ -5,7 +5,9 @@
 //  Created by Luke Zhao on 11/11/23.
 //
 
-import UIKit
+@_exported import UIKit
+@_exported import DynamicTransition
+@_exported import UIComponent
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
