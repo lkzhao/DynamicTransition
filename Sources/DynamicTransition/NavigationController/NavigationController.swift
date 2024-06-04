@@ -157,7 +157,7 @@ open class NavigationController: UIViewController {
 
         switch event {
         case .navigate(let navigationAction, let animated):
-            print(navigationAction)
+//            print(navigationAction)
             let source = displayState.views
             let target = navigationAction.target(from: source)
             guard target != source, let to = target.last, let from = source.last else { break }
@@ -299,5 +299,9 @@ open class NavigationController: UIViewController {
         let newViews: [UIView] = state.transitions.last(where: { $0.context.isCompleting })?.target ?? state.children
         let newStatusBarStyle = (newViews.last as? RootViewType)?.preferredStatusBarStyle ?? .default
         displayState = DisplayState(views: newViews, preferredStatusBarStyle: newStatusBarStyle)
+    }
+
+    public func printState() {
+        print(displayState)
     }
 }

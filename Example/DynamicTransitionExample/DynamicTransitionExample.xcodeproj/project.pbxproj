@@ -12,6 +12,7 @@
 		A3D0A7AA2B00842100AC6A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7A92B00842100AC6A73 /* Assets.xcassets */; };
 		A3D0A7AD2B00842100AC6A73 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7AB2B00842100AC6A73 /* LaunchScreen.storyboard */; };
 		A3D0A7B72B0084A200AC6A73 /* DynamicTransition in Frameworks */ = {isa = PBXBuildFile; productRef = A3D0A7B62B0084A200AC6A73 /* DynamicTransition */; };
+		B17042EA2C0FBCCC0095EA3F /* ExampleNavigationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17042E92C0FBCCC0095EA3F /* ExampleNavigationController.swift */; };
 		B1712C5D2C02B83400B46B91 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = B1712C5C2C02B83400B46B91 /* UIComponent */; };
 		B1712C602C02BB2D00B46B91 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C5F2C02BB2D00B46B91 /* HomeView.swift */; };
 		B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */; };
@@ -28,6 +29,7 @@
 		A3D0A7AC2B00842100AC6A73 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A3D0A7AE2B00842100AC6A73 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3D0A7B42B00842800AC6A73 /* DynamicTransition */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = DynamicTransition; path = ../../..; sourceTree = "<group>"; };
+		B17042E92C0FBCCC0095EA3F /* ExampleNavigationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleNavigationController.swift; sourceTree = "<group>"; };
 		B1712C5F2C02BB2D00B46B91 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTransitionDetailView.swift; sourceTree = "<group>"; };
 		B1712C632C02BB4500B46B91 /* ComponentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentRootView.swift; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 				B1712C672C02C24C00B46B91 /* ImageGrid.swift */,
 				B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */,
 				B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */,
+				B17042E92C0FBCCC0095EA3F /* ExampleNavigationController.swift */,
 				B1712C632C02BB4500B46B91 /* ComponentRootView.swift */,
 			);
 			path = View;
@@ -178,6 +181,7 @@
 				B1712C602C02BB2D00B46B91 /* HomeView.swift in Sources */,
 				B1712C642C02BB4500B46B91 /* ComponentRootView.swift in Sources */,
 				B1712C662C02BB6800B46B91 /* MatchTransitionDetailView.swift in Sources */,
+				B17042EA2C0FBCCC0095EA3F /* ExampleNavigationController.swift in Sources */,
 				A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */,
 				B1712C682C02C24C00B46B91 /* ImageGrid.swift in Sources */,
 				B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */,
