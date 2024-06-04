@@ -78,7 +78,7 @@ public class MatchTransition: InteractiveTransition {
         overlayView?.frame = container.bounds
         overlayView?.isUserInteractionEnabled = true
 
-        if background.superview != container {
+        if background.window == nil {
             container.addSubview(background)
         }
         background.addSubview(overlayView!)
