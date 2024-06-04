@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  AdditiveAnimation.swift
 //  
 //
 //  Created by Luke Zhao on 11/13/23.

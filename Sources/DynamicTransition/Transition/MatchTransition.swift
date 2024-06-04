@@ -1,6 +1,7 @@
 //
 //  MatchTransition.swift
 //
+//
 //  Created by Luke Zhao on 10/6/23.
 //
 
@@ -27,13 +28,13 @@ public class TransitionPanGestureRecognizer: UIPanGestureRecognizer {}
 ///
 public class MatchTransition: InteractiveTransition {
     /// Dismiss gesture recognizer, add this to your view to support drag to dismiss
-    open lazy var verticalDismissGestureRecognizer = TransitionPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
+    public lazy var verticalDismissGestureRecognizer = TransitionPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
         $0.delegate = self
     }
-    open lazy var horizontalDismissGestureRecognizer = TransitionPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
+    public lazy var horizontalDismissGestureRecognizer = TransitionPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
         $0.delegate = self
     }
-    open lazy var horizontalEdgeDismissGestureRecognizer = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
+    public lazy var horizontalEdgeDismissGestureRecognizer = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
         $0.edges = .left
         $0.delegate = self
     }
@@ -292,7 +293,7 @@ public class MatchTransition: InteractiveTransition {
 }
 
 extension MatchTransition: UIGestureRecognizerDelegate {
-    open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer == interruptibleTapRepresentGestureRecognizer {
             return foregroundContainerView.point(inside: gestureRecognizer.location(in: foregroundContainerView), with: nil)
         }
@@ -310,7 +311,7 @@ extension MatchTransition: UIGestureRecognizerDelegate {
         return false
     }
 
-    open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         if otherGestureRecognizer is UIPanGestureRecognizer, let scrollView = otherGestureRecognizer.view as? UIScrollView, otherGestureRecognizer == scrollView.panGestureRecognizer {
             if scrollView.contentSize.height > scrollView.bounds.height, gestureRecognizer == interruptibleVerticalDismissGestureRecognizer || gestureRecognizer == verticalDismissGestureRecognizer {
                 return scrollView.contentOffset.y <= -scrollView.adjustedContentInset.top + 1.0

@@ -3,28 +3,6 @@
 
 import UIKit
 
-public protocol TransitionProvider {
-    func transitionFor(presenting: Bool, otherView: UIView) -> Transition?
-}
-
-public protocol RootViewType: UIView {
-    func willAppear(animated: Bool)
-    func didAppear(animated: Bool)
-    func willDisappear(animated: Bool)
-    func didDisappear(animated: Bool)
-
-    var preferredStatusBarStyle: UIStatusBarStyle { get }
-}
-
-extension RootViewType {
-    func willAppear(animated: Bool) {}
-    func didAppear(animated: Bool) {}
-    func willDisappear(animated: Bool) {}
-    func didDisappear(animated: Bool) {}
-
-    var preferredStatusBarStyle: UIStatusBarStyle { .default }
-}
-
 public protocol Transition: AnyObject {
     // Required
     func animateTransition(context: TransitionContext)
@@ -52,27 +30,5 @@ extension Transition {
     public func canTransitionSimutanously(with transition: Transition) -> Bool { false }
     public func reverse() {
         // no-op
-    }
-}
-
-public protocol TransitionContext {
-    var from: UIView { get }
-    var to: UIView { get }
-    var container: UIView { get }
-    var isPresenting: Bool { get }
-
-    func completeTransition(_ didComplete: Bool)
-
-    // interactive
-    func beginInteractiveTransition()
-    func endInteractiveTransition(_ isCompleting: Bool)
-}
-
-public extension TransitionContext {
-    var foreground: UIView {
-        isPresenting ? to : from
-    }
-    var background: UIView {
-        isPresenting ? from : to
     }
 }

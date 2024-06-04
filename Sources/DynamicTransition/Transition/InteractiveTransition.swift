@@ -37,6 +37,8 @@ open class InteractiveTransition: NSObject, Transition {
         animator?.isAnimating ?? false
     }
 
+    // MARK: - Transition protocol methods
+
     public var wantsInteractiveStart: Bool {
         isInteractive
     }
@@ -65,13 +67,9 @@ open class InteractiveTransition: NSObject, Transition {
         animateTo(position: targetPosition.reversed)
     }
 
-    public func beginInteractiveTransition() {
-        isInteractive = true
-        animator?.pause()
-        context?.beginInteractiveTransition()
-    }
+    // MARK: - Private
 
-    public func didCompleteTransitionAnimation(position: TransitionEndPosition) {
+    private func didCompleteTransitionAnimation(position: TransitionEndPosition) {
         guard let context else { return }
         let didPresent = position == .presented
         cleanupTransition(endPosition: position)
@@ -79,6 +77,14 @@ open class InteractiveTransition: NSObject, Transition {
         self.context = nil
         self.isInteractive = false
         context.completeTransition(didPresent == context.isPresenting)
+    }
+
+    // MARK: - Subclass callable
+
+    public func beginInteractiveTransition() {
+        isInteractive = true
+        animator?.pause()
+        context?.beginInteractiveTransition()
     }
 
     public func animateTo(position: TransitionEndPosition) {
@@ -94,7 +100,7 @@ open class InteractiveTransition: NSObject, Transition {
         animator.animateTo(position: position)
     }
 
-    // MARK: - Subclass Hooks
+    // MARK: - Subclass hooks
 
     open func canTransitionSimutanously(with transition: any Transition) -> Bool {
         false

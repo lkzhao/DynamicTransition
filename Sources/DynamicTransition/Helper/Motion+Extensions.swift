@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Motion+Extensions.swift
 //  
 //
 //  Created by Luke Zhao on 10/14/23.

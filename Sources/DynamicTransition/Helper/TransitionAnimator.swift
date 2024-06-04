@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  TransitionAnimator.swift
+//
 //
 //  Created by Luke Zhao on 10/12/23.
 //
@@ -8,20 +8,6 @@
 import UIKit
 import Motion
 import simd
-
-public enum TransitionEndPosition {
-    case dismissed
-    case presented
-
-    public var reversed: Self {
-        switch self {
-        case .dismissed:
-            return .presented
-        case .presented:
-            return .dismissed
-        }
-    }
-}
 
 public class TransitionAnimator {
     private var children: [AnyHashable: AnyTransitionPropertyAnimator] = [:]
