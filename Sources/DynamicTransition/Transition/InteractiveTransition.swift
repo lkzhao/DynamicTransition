@@ -5,9 +5,10 @@
 //  Created by Luke Zhao on 6/4/24.
 //
 
-import Foundation
+import UIKit
 
 /// ## InteractiveTransition
+///
 /// A base class for implementing interactive transition
 /// It provides an `animator` object that can be used to animate the transition.
 /// This base class conforms to the `Transition` protocol. Instead of implementing `animateTransition(context:)` directly,
@@ -21,15 +22,20 @@ import Foundation
 /// * `animateTo(position:)` - to animate to a specific position or to resume the animation after interaction
 ///
 /// Below are all the methods that can be overriden:
+/// * `canTransitionSimutanously(with:)` - to determine if the transition can be performed simutanously with another transition. Default is false.
 /// * `setupTransition(context:animator:)` - to setup the transition animator. This will only be called once before the transition start.
 /// * `animationWillStart(targetPosition:)` - to perform any setup before the animation starts. This can be called multiple times.
 /// * `cleanupTransition(endPosition:)` - to perform any cleanup after the transition ends. This will only be called once before the transition ends.
-/// * `canTransitionSimutanously(with:)` - to determine if the transition can be performed simutanously with another transition.
 /// Subclass don't need to call super in these methods. (super implementation does nothing)
+///
 open class InteractiveTransition: NSObject, Transition {
     public private(set) var context: TransitionContext?
     public private(set) var animator: TransitionAnimator?
     public private(set) var isInteractive: Bool = false
+
+    public var isAnimating: Bool {
+        animator?.isAnimating ?? false
+    }
 
     public var wantsInteractiveStart: Bool {
         isInteractive
@@ -40,12 +46,14 @@ open class InteractiveTransition: NSObject, Transition {
         animator.addCompletion { position in
             self.didCompleteTransitionAnimation(position: position)
         }
-
-        setupTransition(context: context, animator: animator)
-
-        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
         self.context = context
         self.animator = animator
+
+        CATransaction.begin()
+        setupTransition(context: context, animator: animator)
+        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
+        CATransaction.commit()
+
         if !isInteractive {
             animateTo(position: context.isPresenting ? .presented : .dismissed)
         }
@@ -88,11 +96,11 @@ open class InteractiveTransition: NSObject, Transition {
 
     // MARK: - Subclass Hooks
 
-    open func setupTransition(context: TransitionContext, animator: TransitionAnimator) {
-    }
-
     open func canTransitionSimutanously(with transition: any Transition) -> Bool {
         false
+    }
+
+    open func setupTransition(context: TransitionContext, animator: TransitionAnimator) {
     }
 
     open func animationWillStart(targetPosition: TransitionEndPosition) {

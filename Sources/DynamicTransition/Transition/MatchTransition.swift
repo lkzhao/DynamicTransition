@@ -25,7 +25,7 @@ public class TransitionPanGestureRecognizer: UIPanGestureRecognizer {}
 ///
 /// The foreground view will be masked to the item and expand as the transition
 ///
-open class MatchTransition: NSObject, Transition {
+public class MatchTransition: InteractiveTransition {
     /// Dismiss gesture recognizer, add this to your view to support drag to dismiss
     open lazy var verticalDismissGestureRecognizer = TransitionPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
         $0.delegate = self
@@ -47,10 +47,6 @@ open class MatchTransition: NSObject, Transition {
         $0.delegate = self
     }
 
-    public private(set) var context: TransitionContext?
-    public private(set) var animator: TransitionAnimator?
-    public private(set) var isInteractive: Bool = false
-
     let foregroundContainerView = ShadowContainerView()
     public private(set) var matchedSourceView: UIView?
     public private(set) var matchedDestinationView: UIView?
@@ -61,21 +57,11 @@ open class MatchTransition: NSObject, Transition {
         matchedSourceView != nil
     }
 
-    public var wantsInteractiveStart: Bool {
-        isInteractive
-    }
-
-    public func canTransitionSimutanously(with transition: Transition) -> Bool {
+    public override func canTransitionSimutanously(with transition: Transition) -> Bool {
         transition is MatchTransition
     }
 
-    public func animateTransition(context: TransitionContext) {
-        guard self.context == nil else {
-            return
-        }
-        self.context = context
-
-        CATransaction.begin()
+    public override func setupTransition(context: any TransitionContext, animator: TransitionAnimator) {
         let container = context.container
         let foreground = context.foreground
         let background = context.background
@@ -117,13 +103,7 @@ open class MatchTransition: NSObject, Transition {
             matchedSourceView.isHidden = true
         }
 
-        let animator = TransitionAnimator()
-        animator.addCompletion { position in
-            self.didCompleteTransitionAnimation(position: position)
-        }
-        self.animator = animator
-
-        setupAnimation()
+        setupAnimation(context: context, animator: animator)
 
         if let targetView = backgroundDelegate?.matchedViewInsertionBelowTargetView(transition: self) {
             background.insertSubview(overlayView!, belowSubview: targetView)
@@ -133,41 +113,16 @@ open class MatchTransition: NSObject, Transition {
         backgroundDelegate?.matchTransitionWillBegin(transition: self)
         foregroundDelegate?.matchTransitionWillBegin(transition: self)
 
-        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
-        CATransaction.commit()
-
         scrollViewObservers = (matchedSourceView?.flattendSuperviews.compactMap({ $0 as? UIScrollView }) ?? []).map {
             $0.observe(\UIScrollView.contentOffset, options: [.new, .old]) { [weak self] table, change in
                 guard change.newValue != change.oldValue else { return }
                 self?.targetDidChange()
             }
         }
-
-        if !isInteractive {
-            animateTo(position: context.isPresenting ? .presented : .dismissed)
-        }
     }
 
-    public func reverse() {
-        guard let context, let targetPosition = animator?.targetPosition else { return }
-        let isPresenting = targetPosition.reversed == .presented
-        beginInteractiveTransition()
-        animateTo(position: targetPosition.reversed)
-        context.endInteractiveTransition(context.isPresenting == isPresenting)
-    }
-
-    func calculateDismissedFrame() -> CGRect? {
-        guard let context else { return nil }
-        let container = context.container
-        if let matchedSourceView, let superview = matchedSourceView.superview {
-            let frame = matchedSourceView.frameWithoutTransform
-            return context.background.convert(frame, from: superview)
-        }
-        return container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
-    }
-
-    func setupAnimation() {
-        guard let context, let animator, let dismissedFrame = calculateDismissedFrame() else { return }
+    func setupAnimation(context: any TransitionContext, animator: TransitionAnimator) {
+        guard let dismissedFrame = calculateDismissedFrame() else { return }
         let container = context.container
         let backgroundView = context.background
         let foregroundView = context.foreground
@@ -216,9 +171,25 @@ open class MatchTransition: NSObject, Transition {
         }
     }
 
-    func didCompleteTransitionAnimation(position: TransitionEndPosition) {
+    public override func animationWillStart(targetPosition: TransitionEndPosition) {
         guard let context else { return }
-        let didPresent = position == .presented
+        let isPresenting = targetPosition == .presented
+        if isPresenting {
+            context.container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+            context.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+            interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
+        } else {
+            interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
+            interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
+            context.container.addGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
+        }
+        foregroundContainerView.isUserInteractionEnabled = isPresenting
+        overlayView?.isUserInteractionEnabled = isPresenting
+    }
+
+    public override func cleanupTransition(endPosition: TransitionEndPosition) {
+        guard let context else { return }
+        let didPresent = endPosition == .presented
         let didComplete = didPresent == context.isPresenting
 
         if didPresent {
@@ -239,13 +210,8 @@ open class MatchTransition: NSObject, Transition {
         interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
         interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
 
-        self.animator = nil
-        self.context = nil
-        self.isInteractive = false
         self.sourceViewSnapshot = nil
         self.overlayView = nil
-
-        context.completeTransition(didComplete)
     }
 
     func targetDidChange() {
@@ -259,10 +225,14 @@ open class MatchTransition: NSObject, Transition {
         }
     }
 
-    func beginInteractiveTransition() {
-        isInteractive = true
-        animator?.pause()
-        context?.beginInteractiveTransition()
+    func calculateDismissedFrame() -> CGRect? {
+        guard let context else { return nil }
+        let container = context.container
+        if let matchedSourceView, let superview = matchedSourceView.superview {
+            let frame = matchedSourceView.frameWithoutTransform
+            return context.background.convert(frame, from: superview)
+        }
+        return container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
     }
 
     var totalTranslation: CGPoint = .zero
@@ -312,45 +282,12 @@ open class MatchTransition: NSObject, Transition {
                 animator[foregroundContainerView, \UIView.rotation].dismissedValue = targetRotation
             }
             animateTo(position: shouldDismiss ? .dismissed : .presented)
-            context.endInteractiveTransition(shouldDismiss != context.isPresenting)
         }
     }
 
     @objc func handleTap() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         reverse()
-    }
-
-    func animateTo(position: TransitionEndPosition) {
-        guard let animator else {
-            assertionFailure()
-            return
-        }
-        switch position {
-        case .dismissed:
-            onDismissStarts()
-        case .presented:
-            onPresentStarts()
-        }
-        animator.animateTo(position: position)
-    }
-
-    func onDismissStarts() {
-        guard let context else { return }
-        interruptibleVerticalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-        interruptibleHorizontalDismissGestureRecognizer.view?.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-        context.container.addGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
-        foregroundContainerView.isUserInteractionEnabled = false
-        overlayView?.isUserInteractionEnabled = false
-    }
-
-    func onPresentStarts() {
-        guard let context else { return }
-        context.container.addGestureRecognizer(interruptibleVerticalDismissGestureRecognizer)
-        context.container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
-        interruptibleTapRepresentGestureRecognizer.view?.removeGestureRecognizer(interruptibleTapRepresentGestureRecognizer)
-        foregroundContainerView.isUserInteractionEnabled = true
-        overlayView?.isUserInteractionEnabled = true
     }
 }
 
