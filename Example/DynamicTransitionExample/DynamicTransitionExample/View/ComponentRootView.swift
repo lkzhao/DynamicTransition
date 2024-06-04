@@ -33,19 +33,19 @@ class ComponentRootView: UIView, RootViewType {
     /// Conforming to RootViewType is optional, but it allows you to receive lifecycle events and customize status bar style
 
     func willAppear(animated: Bool) {
-
+        print("\(type(of: self)) willAppear")
     }
 
     func didAppear(animated: Bool) {
-
+        print("\(type(of: self)) didAppear")
     }
 
     func willDisappear(animated: Bool) {
-
+        print("\(type(of: self)) willDisappear")
     }
 
     func didDisappear(animated: Bool) {
-
+        print("\(type(of: self)) didDisappear")
     }
 
     var preferredStatusBarStyle: UIStatusBarStyle {

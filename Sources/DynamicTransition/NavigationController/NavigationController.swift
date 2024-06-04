@@ -22,7 +22,7 @@ open class NavigationController: UIViewController {
         }
         var children: [UIView]
         var transitions: [TransitionState] = []
-        var nextAction: (Event.NavigationAction, Bool)?
+        var nextAction: (NavigationAction, Bool)?
     }
 
     private struct DisplayState {
@@ -30,41 +30,40 @@ open class NavigationController: UIViewController {
         var preferredStatusBarStyle: UIStatusBarStyle
     }
 
-    private enum Event {
-        enum NavigationAction {
-            case push(UIView)
-            case dismiss(UIView)
-            case pop
-            case popToRoot
-            case set([UIView])
+    private enum NavigationAction {
+        case push(UIView)
+        case dismiss(UIView)
+        case pop
+        case popToRoot
+        case set([UIView])
 
-            func target(from source: [UIView]) -> [UIView] {
-                switch self {
-                case .push(let vc):
-                    return source + [vc]
-                case .dismiss(let vc):
-                    guard let index = source.firstIndex(of: vc) else {
-                        assertionFailure("The View doesn't exist in the NavigationController's stack")
-                        return source
-                    }
-                    return source[0..<max(1, index)].array
-                case .pop:
-                    return source[0..<max(1, source.count - 1)].array
-                case .popToRoot:
-                    return [source.first!]
-                case .set(let vcs):
-                    guard !vcs.isEmpty else {
-                        assertionFailure("Cannot set empty view controllers to NavigationController")
-                        return source
-                    }
-                    return vcs
+        func target(from source: [UIView]) -> [UIView] {
+            switch self {
+            case .push(let vc):
+                return source + [vc]
+            case .dismiss(let vc):
+                guard let index = source.firstIndex(of: vc) else {
+                    assertionFailure("The View doesn't exist in the NavigationController's stack")
+                    return source
                 }
+                return source[0..<max(1, index)].array
+            case .pop:
+                return source[0..<max(1, source.count - 1)].array
+            case .popToRoot:
+                return [source.first!]
+            case .set(let vcs):
+                guard !vcs.isEmpty else {
+                    assertionFailure("Cannot set empty view controllers to NavigationController")
+                    return source
+                }
+                return vcs
             }
         }
+    }
 
+    private enum Event {
         case navigate(NavigationAction, animated: Bool)
         case didCompleteTransition(NavigationTransitionContext)
-        case didCancelTransition(NavigationTransitionContext)
     }
 
     private class NavigationTransitionContext: TransitionContext {
@@ -86,10 +85,19 @@ open class NavigationController: UIViewController {
             self.navigationController = navigationController
             self.isInteractive = isInteractive
             self.isCompleting = true
+            (from as? RootViewType)?.willDisappear(animated: true)
+            (to as? RootViewType)?.willAppear(animated: true)
         }
 
-        func completeTransition(_ didComplete: Bool) {
-            navigationController?.process(didComplete ? .didCompleteTransition(self) : .didCancelTransition(self))
+        func completeTransition() {
+            if isCompleting {
+                (from as? RootViewType)?.didDisappear(animated: true)
+                (to as? RootViewType)?.didAppear(animated: true)
+            } else {
+                (to as? RootViewType)?.didDisappear(animated: true)
+                (from as? RootViewType)?.didAppear(animated: true)
+            }
+            navigationController?.process(.didCompleteTransition(self))
         }
 
         func beginInteractiveTransition() {
@@ -99,6 +107,8 @@ open class NavigationController: UIViewController {
         func endInteractiveTransition(_ isCompleting: Bool) {
             isInteractive = false
             if isCompleting != self.isCompleting {
+                (from as? RootViewType)?.willAppear(animated: true)
+                (to as? RootViewType)?.willDisappear(animated: true)
                 self.isCompleting = isCompleting
                 navigationController?.didUpdateViews()
             }
@@ -189,45 +199,17 @@ open class NavigationController: UIViewController {
             state.transitions.append(transitionState)
 
             runBlock = {
-                (from as? RootViewType)?.willDisappear(animated: true)
-                (to as? RootViewType)?.willAppear(animated: true)
                 transition.animateTransition(context: context)
                 self.didUpdateViews()
             }
         case .didCompleteTransition(let context):
             guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { break }
             let transitionState = state.transitions.remove(at: index)
-            state.children = transitionState.target
             let nextAction = state.nextAction
+            state.children = context.isCompleting ? transitionState.target : transitionState.source
             state.nextAction = nil
             runBlock = {
                 self.view.setNeedsLayout()
-                if let source = transitionState.source.last {
-                    (source as? RootViewType)?.didDisappear(animated: true)
-                }
-                if let target = transitionState.target.last {
-                    (target as? RootViewType)?.didAppear(animated: true)
-                }
-                self.didUpdateViews()
-                if let (navigationAction, animated) = nextAction {
-                    self.process(.navigate(navigationAction, animated: animated))
-                }
-            }
-        case .didCancelTransition(let context):
-            guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { break }
-            let transitionState = state.transitions.remove(at: index)
-            state.children = transitionState.source
-            let nextAction = state.nextAction
-            state.nextAction = nil
-            runBlock = {
-                self.view.setNeedsLayout()
-                if let target = transitionState.target.last {
-                    (target as? RootViewType)?.willDisappear(animated: false)
-                    (target as? RootViewType)?.didDisappear(animated: false)
-                }
-                if let source = transitionState.source.last {
-                    (source as? RootViewType)?.didAppear(animated: true)
-                }
                 self.didUpdateViews()
                 if let (navigationAction, animated) = nextAction {
                     self.process(.navigate(navigationAction, animated: animated))

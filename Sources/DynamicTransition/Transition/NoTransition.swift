@@ -19,6 +19,6 @@ public class NoTransition: NSObject, Transition {
         to.layoutIfNeeded()
 
         from.removeFromSuperview()
-        context.completeTransition(true)
+        context.completeTransition()
     }
 }

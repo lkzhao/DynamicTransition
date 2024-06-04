@@ -71,12 +71,11 @@ open class InteractiveTransition: NSObject, Transition {
 
     private func didCompleteTransitionAnimation(position: TransitionEndPosition) {
         guard let context else { return }
-        let didPresent = position == .presented
         cleanupTransition(endPosition: position)
         self.animator = nil
         self.context = nil
         self.isInteractive = false
-        context.completeTransition(didPresent == context.isPresenting)
+        context.completeTransition()
     }
 
     // MARK: - Subclass callable
