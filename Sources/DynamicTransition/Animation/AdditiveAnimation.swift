@@ -64,7 +64,7 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
 
     public func animate(
         to toValue: Value,
-        response: Double = 0.3,
+        response: Double = 3.0,
         dampingRatio: Double = 1.0,
         completion: (() -> Void)? = nil
     ) {
