@@ -72,6 +72,19 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
         self.response = response
         self.dampingRatio = dampingRatio
     }
+
+    /// Set the new target value and apply the offset to the current value
+    /// Note that the value set here is the final value, not the offset value (both `presentedValue` and `dismissedValue` are offset values)
+    public func setNewTargetValueAndApplyOffset(position: TransitionEndPosition, newValue: Value) {
+        let offsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
+        if position == .presented {
+            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - presentedValue.simdRepresentation())
+            presentedValue = offsetValue
+        } else {
+            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - dismissedValue.simdRepresentation())
+            dismissedValue = offsetValue
+        }
+    }
 }
 
 extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {

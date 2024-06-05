@@ -116,7 +116,8 @@ public class MatchTransition: InteractiveTransition {
         backgroundDelegate?.matchTransitionWillBegin(transition: self)
         foregroundDelegate?.matchTransitionWillBegin(transition: self)
 
-        scrollViewObservers = (matchedSourceView?.flattendSuperviews.compactMap({ $0 as? UIScrollView }) ?? []).map {
+        let scrollViews: [UIScrollView] = ((matchedSourceView?.flattendSuperviews ?? []) + (matchedDestinationView?.flattendSuperviews ?? [])).compactMap({ $0 as? UIScrollView })
+        scrollViewObservers = scrollViews.map {
             $0.observe(\UIScrollView.contentOffset, options: [.new, .old]) { [weak self] table, change in
                 guard change.newValue != change.oldValue else { return }
                 self?.targetDidChange()
@@ -125,23 +126,9 @@ public class MatchTransition: InteractiveTransition {
     }
 
     func setupAnimation(context: any TransitionContext, animator: TransitionAnimator) {
-        guard let dismissedFrame = calculateDismissedFrame(), let overlayView, let foregroundContainerView else { return }
+        guard let (dismissedFrame, presentedFrame) = calculateTargetFrames(), let overlayView, let foregroundContainerView else { return }
         let container = context.container
-        let backgroundView = context.background
         let foregroundView = context.foreground
-
-        let presentedFrame: CGRect
-
-        if isMatched {
-            if let matchedDestinationView {
-                presentedFrame = backgroundView.convert(matchedDestinationView.bounds, from: matchedDestinationView)
-            } else {
-                let fillHeight = dismissedFrame.size.size(fit: CGSize(width: container.bounds.width, height: .infinity)).height
-                presentedFrame = CGRect(x: 0, y: 0, width: container.bounds.width, height: fillHeight)
-            }
-        } else {
-            presentedFrame = container.bounds
-        }
 
         let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
         let presentedCornerRadius = isFullScreen ? UIScreen.main.displayCornerRadius : container.parentViewController?.sheetPresentationController?.preferredCornerRadius ?? 0
@@ -221,24 +208,38 @@ public class MatchTransition: InteractiveTransition {
     }
 
     func targetDidChange() {
-        guard let animator, let context, let targetPosition = animator.targetPosition, targetPosition == .dismissed, matchedSourceView?.window != nil, let newDismissedFrame = calculateDismissedFrame(), let foregroundContainerView else { return }
-        let oldContainerCenter = animator[foregroundContainerView, \UIView.center].dismissedValue
-        let newContainerCenter = newDismissedFrame.center - context.container.bounds.center
-        animator[foregroundContainerView, \UIView.center].dismissedValue = newContainerCenter
-        let diff = newContainerCenter - oldContainerCenter
-        if diff != .zero {
-            animator[foregroundContainerView, \UIView.center].value += diff
+        guard let animator, let (newDismissedFrame, newPresentedFrame) = calculateTargetFrames() else { return }
+        if animator.targetPosition == .dismissed, let foregroundContainerView, matchedSourceView?.window != nil {
+            animator[foregroundContainerView, \UIView.center].setNewTargetValueAndApplyOffset(position: .dismissed, newValue: newDismissedFrame.center)
+        }
+        if animator.targetPosition == .presented, let sourceViewSnapshot, matchedDestinationView?.window != nil {
+            animator[sourceViewSnapshot, \UIView.center].setNewTargetValueAndApplyOffset(position: .presented, newValue: newPresentedFrame.center)
         }
     }
 
-    func calculateDismissedFrame() -> CGRect? {
+    func calculateTargetFrames() -> (CGRect, CGRect)? {
         guard let context else { return nil }
         let container = context.container
+        let dismissFrame: CGRect
+        let presentFrame: CGRect
+
         if let matchedSourceView, let superview = matchedSourceView.superview {
             let frame = matchedSourceView.frameWithoutTransform
-            return context.background.convert(frame, from: superview)
+            dismissFrame = context.background.convert(frame, from: superview)
+        } else {
+            dismissFrame = container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
         }
-        return container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
+        if isMatched {
+            if let matchedDestinationView {
+                presentFrame = context.foreground.convert(matchedDestinationView.bounds, from: matchedDestinationView)
+            } else {
+                let fillHeight = dismissFrame.size.size(fit: CGSize(width: container.bounds.width, height: .infinity)).height
+                presentFrame = CGRect(x: 0, y: 0, width: container.bounds.width, height: fillHeight)
+            }
+        } else {
+            presentFrame = container.bounds
+        }
+        return (dismissFrame, presentFrame)
     }
 
     var totalTranslation: CGPoint = .zero
