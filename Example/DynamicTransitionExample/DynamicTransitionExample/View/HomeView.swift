@@ -8,7 +8,7 @@
 class HomeView: ComponentRootView {
     override func viewDidLoad() {
         super.viewDidLoad()
-        componentView.component = VStack(spacing: 10, alignItems: .center) {
+        componentView.component = VStack(spacing: 20, alignItems: .center) {
             Text("\(type(of: self))", font: .boldSystemFont(ofSize: 18))
             HStack(spacing: 10, alignItems: .center) {
                 Text("Push Transition", font: .systemFont(ofSize: 18)).flex()
@@ -17,6 +17,7 @@ class HomeView: ComponentRootView {
                 pushTransition()
             }.borderColor(.separator).borderWidth(1).cornerCurve(.continuous).cornerRadius(16)
 
+            Text("This example is intentionally slow to demo the interactivity during transition", font: .systemFont(ofSize: 18)).textColor(.secondaryLabel).textAlignment(.center)
             ImageGrid()
         }.inset(20)
     }

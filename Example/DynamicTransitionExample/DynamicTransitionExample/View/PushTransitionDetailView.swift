@@ -12,7 +12,7 @@ class PushTransitionDetailView: ComponentRootView {
         super.viewDidLoad()
         transition.response = 3.0
 
-        componentView.component = VStack(spacing: 10, alignItems: .center) {
+        componentView.component = VStack(spacing: 20, alignItems: .center) {
             Text("\(type(of: self))", font: .boldSystemFont(ofSize: 18))
             HStack(spacing: 10, alignItems: .center) {
                 Text("Push Another", font: .systemFont(ofSize: 18)).flex()
