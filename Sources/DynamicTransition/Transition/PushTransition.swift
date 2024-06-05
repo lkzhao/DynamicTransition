@@ -53,9 +53,9 @@ public class PushTransition: InteractiveTransition {
         foregroundView.layoutIfNeeded()
         foregroundView.lockedSafeAreaInsets = container.safeAreaInsets
 
-        animator[foregroundView, \.translationX].dismissedOffsetValue = container.bounds.width
-        animator[overlayView, \.alpha].dismissedOffsetValue = -1
-        animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
+        animator[foregroundView, \.translationX].dismissedValue = container.bounds.width
+        animator[overlayView, \.alpha].dismissedValue = 0
+
         self.overlayView = overlayView
     }
 

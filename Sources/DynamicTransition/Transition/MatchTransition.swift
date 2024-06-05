@@ -142,22 +142,22 @@ public class MatchTransition: InteractiveTransition {
         let scaleOffset = -(1 - dismissedScale) / 2 * CGPoint(container.bounds.size)
         let dismissedOffset = scaleOffset + sizeOffset + originOffset
 
-        animator[overlayView, \.progress].presentedOffsetValue = 1
-        animator[foregroundContainerView, \UIView.shadowOpacity].dismissedOffsetValue = -1
-        foregroundContainerView.cornerRadius = presentedCornerRadius
-        animator[foregroundContainerView, \UIView.cornerRadius].dismissedOffsetValue = dismissedCornerRadius - presentedCornerRadius
+        animator[overlayView, \.progress].presentedValue = 1
+        animator[foregroundContainerView, \UIView.shadowOpacity].dismissedValue = 0
+        animator[foregroundContainerView, \UIView.cornerRadius].presentedValue = presentedCornerRadius
+        animator[foregroundContainerView, \UIView.cornerRadius].dismissedValue = dismissedCornerRadius
 
-        animator[foregroundContainerView, \UIView.bounds.size].dismissedOffsetValue = dismissedFrame.size - containerPresentedFrame.size
-        animator[foregroundContainerView, \UIView.center].dismissedOffsetValue = dismissedFrame.center - containerPresentedFrame.center
-        animator[foregroundContainerView, \UIView.rotation].dismissedOffsetValue = matchedSourceView?.rotation ?? 0
-        animator[foregroundContainerView, \UIView.scale].dismissedOffsetValue = (matchedSourceView?.scale ?? 1) - 1
-        animator[foregroundView, \UIView.translation].dismissedOffsetValue = dismissedOffset
-        animator[foregroundView, \UIView.scale].dismissedOffsetValue = dismissedScale - 1
+        animator[foregroundContainerView, \UIView.bounds.size].dismissedValue = dismissedFrame.size
+        animator[foregroundContainerView, \UIView.center].dismissedValue = dismissedFrame.center
+        animator[foregroundContainerView, \UIView.rotation].dismissedValue = matchedSourceView?.rotation ?? 0
+        animator[foregroundContainerView, \UIView.scale].dismissedValue = matchedSourceView?.scale ?? 1
+        animator[foregroundView, \UIView.translation].dismissedValue = dismissedOffset
+        animator[foregroundView, \UIView.scale].dismissedValue = dismissedScale
 
         if let sourceViewSnapshot {
             sourceViewSnapshot.frameWithoutTransform = CGRect(center: presentedFrame.center, size: dismissedFrame.size)
             sourceViewSnapshot.scale = 1 / dismissedScale
-            animator[sourceViewSnapshot, \UIView.alpha].presentedOffsetValue = -1
+            animator[sourceViewSnapshot, \UIView.alpha].presentedValue = 0
         }
     }
 
@@ -268,8 +268,8 @@ public class MatchTransition: InteractiveTransition {
             let progress = progressFrom(offset: translation)
             animator[foregroundContainerView, \UIView.center].isIndependent = true
             animator[foregroundContainerView, \UIView.rotation].isIndependent = true
-            animator[foregroundContainerView, \UIView.center].currentOffsetValue += translation * (isMatched ? 0.5 : 1.0)
-            animator[foregroundContainerView, \UIView.rotation].currentOffsetValue += translation.x * 0.0003
+            animator[foregroundContainerView, \UIView.center].currentValue += translation * (isMatched ? 0.5 : 1.0)
+            animator[foregroundContainerView, \UIView.rotation].currentValue += translation.x * 0.0003
             animator.shift(progress: progress)
         default:
             guard let context, let animator, let foregroundContainerView else { return }
@@ -278,15 +278,15 @@ public class MatchTransition: InteractiveTransition {
             let shouldDismiss = translationPlusVelocity.x + translationPlusVelocity.y > 80
             animator[foregroundContainerView, \UIView.center].velocity = velocity
             if isMatched {
-                animator[foregroundContainerView, \UIView.rotation].dismissedOffsetValue = matchedSourceView?.rotation ?? 0
-                animator[foregroundContainerView, \UIView.scale].dismissedOffsetValue = (matchedSourceView?.scale ?? 1) - 1
+                animator[foregroundContainerView, \UIView.rotation].dismissedValue = matchedSourceView?.rotation ?? 0
+                animator[foregroundContainerView, \UIView.scale].dismissedValue = matchedSourceView?.scale ?? 1
             } else {
                 let angle = translationPlusVelocity / context.container.bounds.size
                 let offset = angle / angle.distance(.zero) * 1.4 * context.container.bounds.size
                 let targetOffset = context.container.bounds.center + offset
                 let targetRotation = foregroundContainerView.rotation + translationPlusVelocity.x * 0.0001
-                animator[foregroundContainerView, \UIView.center].dismissedOffsetValue = targetOffset - context.container.bounds.center
-                animator[foregroundContainerView, \UIView.rotation].dismissedOffsetValue = targetRotation
+                animator[foregroundContainerView, \UIView.center].dismissedValue = targetOffset
+                animator[foregroundContainerView, \UIView.rotation].dismissedValue = targetRotation
             }
             animateTo(position: shouldDismiss ? .dismissed : .presented)
         }

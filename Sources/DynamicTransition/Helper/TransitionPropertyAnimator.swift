@@ -43,6 +43,32 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
             animation.currentOffsetValue = newValue
         }
     }
+
+    public var presentedValue: Value {
+        get {
+            Value(presentedOffsetValue.simdRepresentation() + baseValue.simdRepresentation())
+        }
+        set {
+            presentedOffsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
+        }
+    }
+    public var dismissedValue: Value {
+        get {
+            Value(dismissedOffsetValue.simdRepresentation() + baseValue.simdRepresentation())
+        }
+        set {
+            dismissedOffsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
+        }
+    }
+    public var currentValue: Value {
+        get {
+            Value(currentOffsetValue.simdRepresentation() + baseValue.simdRepresentation())
+        }
+        set {
+            currentOffsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
+        }
+    }
+
     public var velocity: Value {
         get {
             animation.velocity
@@ -51,18 +77,17 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
             animation.velocity = newValue
         }
     }
+
     public var baseValue: Value {
-        get {
-            animation.baseValue
-        }
-        set {
-            animation.baseValue = newValue
-        }
+        animation.baseValue
     }
+
     public var isIndependent: Bool = false
+
     public var isAnimating: Bool {
         targetPosition != nil
     }
+
     public private(set) var targetPosition: TransitionEndPosition?
 
     internal init(target: AnimationTarget<View, Value>, response: CGFloat, dampingRatio: CGFloat) {
