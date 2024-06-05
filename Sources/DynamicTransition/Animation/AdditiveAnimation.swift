@@ -10,7 +10,7 @@ import Motion
 
 public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
     internal let target: AnimationTarget<View, Value>
-    internal let animation: SpringAnimation<Value>
+    internal let offsetAnimation: SpringAnimation<Value>
 
     public convenience init(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) {
         self.init(target: AnimationTarget(view: view, keyPath: keyPath))
@@ -18,7 +18,7 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
 
     internal init(target: AnimationTarget<View, Value>) {
         self.target = target
-        animation = SpringAnimation(initialValue: .zero)
+        offsetAnimation = SpringAnimation(initialValue: .zero)
         AdditiveAnimationManager.shared.add(animation: self)
     }
 
@@ -35,55 +35,55 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
         }
     }
     
-    public var value: Value {
+    public var currentOffsetValue: Value {
         get {
-            animation.value
+            offsetAnimation.value
         }
         set {
-            animation.updateValue(to: newValue, postValueChanged: true)
+            offsetAnimation.updateValue(to: newValue, postValueChanged: true)
         }
     }
 
     public var velocity: Value {
         get {
-            animation.velocity
+            offsetAnimation.velocity
         }
         set {
-            animation.velocity = newValue
+            offsetAnimation.velocity = newValue
         }
     }
 
-    public var toValue: Value {
+    public var targetOffsetValue: Value {
         get {
-            animation.toValue
+            offsetAnimation.toValue
         }
         set {
-            animation.toValue = newValue
+            offsetAnimation.toValue = newValue
         }
     }
 
     public func animate(
-        to toValue: Value,
+        toOffset: Value,
         response: Double = 3.0,
         dampingRatio: Double = 1.0,
         completion: (() -> Void)? = nil
     ) {
-        let threshold = max(0.1, self.value.distance(between: toValue)) * 0.005
+        let threshold = max(0.1, self.currentOffsetValue.distance(between: toOffset)) * 0.005
         let epsilon = (threshold as? Value.SIMDType.EpsilonType) ?? 0.01
-        if self.value.simdRepresentation().approximatelyEqual(to: toValue.simdRepresentation(), epsilon: epsilon) {
+        if self.currentOffsetValue.simdRepresentation().approximatelyEqual(to: toOffset.simdRepresentation(), epsilon: epsilon) {
             completion?()
         } else {
-            animation.configure(response: Value.SIMDType.Scalar(response),
+            offsetAnimation.configure(response: Value.SIMDType.Scalar(response),
                                 dampingRatio: Value.SIMDType.Scalar(dampingRatio))
-            animation.toValue = toValue
-            animation.resolvingEpsilon = epsilon
-            animation.completion = completion
-            animation.start()
+            offsetAnimation.toValue = toOffset
+            offsetAnimation.resolvingEpsilon = epsilon
+            offsetAnimation.completion = completion
+            offsetAnimation.start()
         }
     }
 
     public func stop() {
-        animation.stop()
+        offsetAnimation.stop()
     }
 }
 
@@ -127,7 +127,7 @@ private class AdditiveAnimationManager {
         if children[animation.target] == nil {
             children[animation.target] = AdditiveCummulator(target: animation.target)
         }
-        (children[animation.target]! as! AdditiveCummulator<View, Value>).add(animation: animation.animation)
+        (children[animation.target]! as! AdditiveCummulator<View, Value>).add(animation: animation.offsetAnimation)
     }
 
     func baseValue<View:UIView, Value: SIMDRepresentable>(target: AnimationTarget<View, Value>) -> Value {
@@ -144,7 +144,7 @@ private class AdditiveAnimationManager {
 
     func remove<View: UIView, Value: SIMDRepresentable>(animation: AdditiveAnimation<View, Value>) {
         guard let child = children[animation.target] as? AdditiveCummulator<View, Value> else { return }
-        child.remove(animation: animation.animation)
+        child.remove(animation: animation.offsetAnimation)
         if child.animations.isEmpty {
             children[animation.target] = nil
         }

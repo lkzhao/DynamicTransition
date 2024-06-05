@@ -268,8 +268,8 @@ public class MatchTransition: InteractiveTransition {
             let progress = progressFrom(offset: translation)
             animator[foregroundContainerView, \UIView.center].isIndependent = true
             animator[foregroundContainerView, \UIView.rotation].isIndependent = true
-            animator[foregroundContainerView, \UIView.center].value += translation * (isMatched ? 0.5 : 1.0)
-            animator[foregroundContainerView, \UIView.rotation].value += translation.x * 0.0003
+            animator[foregroundContainerView, \UIView.center].currentOffsetValue += translation * (isMatched ? 0.5 : 1.0)
+            animator[foregroundContainerView, \UIView.rotation].currentOffsetValue += translation.x * 0.0003
             animator.shift(progress: progress)
         default:
             guard let context, let animator, let foregroundContainerView else { return }
