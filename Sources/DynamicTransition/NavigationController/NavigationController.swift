@@ -15,14 +15,24 @@ public protocol NavigationControllerDelegate: AnyObject {
 open class NavigationController: UIViewController {
     private struct State {
         struct TransitionState {
-            var context: NavigationTransitionContext
-            var transition: Transition
-            var source: [UIView]
-            var target: [UIView]
+            let context: NavigationTransitionContext
+            let transition: Transition
+            let source: [UIView]
+            let target: [UIView]
         }
         var children: [UIView]
         var transitions: [TransitionState] = []
         var nextAction: (NavigationAction, Bool)?
+
+        var currentViews: [UIView] {
+            transitions.last(where: { $0.context.isCompleting })?.target ?? children
+        }
+
+        var currentDisplayState: DisplayState {
+            let newViews: [UIView] = currentViews
+            let newStatusBarStyle = (newViews.last as? RootViewType)?.preferredStatusBarStyle ?? .default
+            return DisplayState(views: newViews, preferredStatusBarStyle: newStatusBarStyle)
+        }
     }
 
     private struct DisplayState {
@@ -63,11 +73,10 @@ open class NavigationController: UIViewController {
 
     private enum Event {
         case navigate(NavigationAction, animated: Bool)
-        case didCompleteTransition(NavigationTransitionContext)
+        case didUpdateTransition(NavigationTransitionContext)
     }
 
     private class NavigationTransitionContext: TransitionContext {
-        weak var navigationController: NavigationController?
         let id = UUID()
         var container: UIView
         var from: UIView
@@ -76,20 +85,29 @@ open class NavigationController: UIViewController {
         var isPresenting: Bool
         var isInteractive: Bool
         var isCompleting: Bool
+        var isCompleted: Bool
 
-        init(container: UIView, isPresenting: Bool, from: UIView, to: UIView, isInteractive: Bool, navigationController: NavigationController) {
+        var onUpdate: (NavigationTransitionContext) -> Void
+
+        init(container: UIView, isPresenting: Bool, from: UIView, to: UIView, isInteractive: Bool, onUpdate: @escaping (NavigationTransitionContext) -> Void) {
             self.container = container
             self.isPresenting = isPresenting
             self.from = from
             self.to = to
-            self.navigationController = navigationController
+            self.onUpdate = onUpdate
             self.isInteractive = isInteractive
             self.isCompleting = true
+            self.isCompleted = false
             (from as? RootViewType)?.willDisappear(animated: true)
             (to as? RootViewType)?.willAppear(animated: true)
         }
 
         func completeTransition() {
+            guard !isCompleted else {
+                assertionFailure("Transition is already completed")
+                return
+            }
+            isCompleted = true
             if isCompleting {
                 (from as? RootViewType)?.didDisappear(animated: true)
                 (to as? RootViewType)?.didAppear(animated: true)
@@ -97,20 +115,28 @@ open class NavigationController: UIViewController {
                 (to as? RootViewType)?.didDisappear(animated: true)
                 (from as? RootViewType)?.didAppear(animated: true)
             }
-            navigationController?.process(.didCompleteTransition(self))
+            onUpdate(self)
         }
 
         func beginInteractiveTransition() {
+            guard !isCompleted else {
+                assertionFailure("Transition is already completed")
+                return
+            }
             isInteractive = true
         }
 
         func endInteractiveTransition(_ isCompleting: Bool) {
+            guard !isCompleted else {
+                assertionFailure("Transition is already completed")
+                return
+            }
             isInteractive = false
             if isCompleting != self.isCompleting {
                 (from as? RootViewType)?.willAppear(animated: true)
                 (to as? RootViewType)?.willDisappear(animated: true)
                 self.isCompleting = isCompleting
-                navigationController?.didUpdateViews()
+                onUpdate(self)
             }
         }
     }
@@ -171,6 +197,7 @@ open class NavigationController: UIViewController {
             let target = navigationAction.target(from: source)
             guard target != source, let to = target.last, let from = source.last else { break }
             guard from != to else {
+                // TODO: This might need more work. Will get overriden.
                 state.children = target
                 break
             }
@@ -194,7 +221,9 @@ open class NavigationController: UIViewController {
             }
 
             let isInteractiveStart = transition.wantsInteractiveStart
-            let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart, navigationController: self)
+            let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart) { [weak self] context in
+                self?.process(.didUpdateTransition(context))
+            }
             let transitionState = State.TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
 
@@ -202,17 +231,23 @@ open class NavigationController: UIViewController {
                 transition.animateTransition(context: context)
                 self.didUpdateViews()
             }
-        case .didCompleteTransition(let context):
-            guard let index = state.transitions.firstIndex(where: { $0.context.id == context.id }) else { break }
-            let transitionState = state.transitions.remove(at: index)
-            let nextAction = state.nextAction
-            state.children = context.isCompleting ? transitionState.target : transitionState.source
-            state.nextAction = nil
-            runBlock = {
-                self.view.setNeedsLayout()
-                self.didUpdateViews()
-                if let (navigationAction, animated) = nextAction {
-                    self.process(.navigate(navigationAction, animated: animated))
+        case .didUpdateTransition(_):
+            if state.transitions.allSatisfy({ $0.context.isCompleted }) {
+                // all transition completed, cleanup
+                let nextAction = state.nextAction
+                let children = state.currentViews
+                state.transitions = []
+                state.children = children
+                state.nextAction = nil
+                runBlock = {
+                    self.didUpdateViews()
+                    if let (navigationAction, animated) = nextAction {
+                        self.process(.navigate(navigationAction, animated: animated))
+                    }
+                }
+            } else {
+                runBlock = {
+                    self.didUpdateViews()
                 }
             }
         }
@@ -277,10 +312,9 @@ open class NavigationController: UIViewController {
     }
 
     private func didUpdateViews() {
-        let newViews: [UIView] = state.transitions.last(where: { $0.context.isCompleting })?.target ?? state.children
-        let newStatusBarStyle = (newViews.last as? RootViewType)?.preferredStatusBarStyle ?? .default
-        displayState = DisplayState(views: newViews, preferredStatusBarStyle: newStatusBarStyle)
-        printState()
+        displayState = state.currentDisplayState
+        view.setNeedsLayout()
+//        printState()
     }
 
     public func printState() {
@@ -288,7 +322,7 @@ open class NavigationController: UIViewController {
             "\(type(of: $0))"
         }
         let states = state.transitions.map {
-            "\(type(of: $0.transition)): isPresenting=\($0.context.isPresenting) isCompleting=\($0.context.isCompleting)"
+            "\(type(of: $0.transition)): isPresenting=\($0.context.isPresenting) isCompleting=\($0.context.isCompleting) isCompleted=\($0.context.isCompleted)"
         }
         print("""
         --------------------------------
@@ -297,6 +331,7 @@ open class NavigationController: UIViewController {
 
         Views:
         \(views.joined(separator: "\n"))
+        --------------------------------
         """)
     }
 }
