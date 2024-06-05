@@ -26,7 +26,7 @@ public class PushTransition: InteractiveTransition {
     private var totalTranslation: CGPoint = .zero
 
     public override func canTransitionSimutanously(with transition: Transition) -> Bool {
-        transition is PushTransition
+        transition is PushTransition || transition is MatchTransition
     }
 
     public override func setupTransition(context: any TransitionContext, animator: TransitionAnimator) {
@@ -42,16 +42,16 @@ public class PushTransition: InteractiveTransition {
 
         if foregroundView.superview == container {
             container.insertSubview(backgroundView, belowSubview: foregroundView)
-        } else if backgroundView.superview != container {
+        } else if backgroundView.window == nil {
             container.addSubview(backgroundView)
         }
-        container.insertSubview(overlayView, aboveSubview: backgroundView)
-        container.insertSubview(foregroundView, aboveSubview: overlayView)
+        backgroundView.addSubview(overlayView)
+        backgroundView.addSubview(foregroundView)
         container.addGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
 
         foregroundView.setNeedsLayout()
         foregroundView.layoutIfNeeded()
-        foregroundView.lockSafeAreaInsets = true
+        foregroundView.lockedSafeAreaInsets = container.safeAreaInsets
 
         animator[foregroundView, \.translationX].dismissedValue = container.bounds.width
         animator[overlayView, \.alpha].dismissedValue = -1
@@ -73,14 +73,8 @@ public class PushTransition: InteractiveTransition {
 
     public override func cleanupTransition(endPosition: TransitionEndPosition) {
         guard let context else { return }
-        context.foreground.lockSafeAreaInsets = false
+        context.foreground.lockedSafeAreaInsets = nil
         context.foreground.isUserInteractionEnabled = true
-        let didPresent = endPosition == .presented
-        if didPresent {
-            context.background.removeFromSuperview()
-        } else {
-            context.foreground.removeFromSuperview()
-        }
         overlayView?.removeFromSuperview()
         context.container.removeGestureRecognizer(interruptibleHorizontalDismissGestureRecognizer)
     }
@@ -96,8 +90,8 @@ public class PushTransition: InteractiveTransition {
         switch gr.state {
         case .began:
             beginInteractiveTransition()
-            if context == nil {
-                view.dismiss()
+            if context == nil, let navigationController = view.navigationController, navigationController.views.count > 1 {
+                navigationController.popView(animated: true)
             }
             totalTranslation = .zero
         case .changed:

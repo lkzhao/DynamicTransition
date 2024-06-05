@@ -18,6 +18,9 @@ internal protocol AnyTransitionPropertyAnimator {
 public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> {
     private let animation: AdditiveAnimation<View, Value>
 
+    public var response: CGFloat
+    public var dampingRatio: CGFloat
+
     public var presentedValue: Value {
         didSet {
             if targetPosition == .presented {
@@ -62,10 +65,12 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
     }
     public private(set) var targetPosition: TransitionEndPosition?
 
-    internal init(target: AnimationTarget<View, Value>) {
+    internal init(target: AnimationTarget<View, Value>, response: CGFloat, dampingRatio: CGFloat) {
         self.animation = AdditiveAnimation(target: target)
         self.presentedValue = .zero
         self.dismissedValue = .zero
+        self.response = response
+        self.dampingRatio = dampingRatio
     }
 }
 
@@ -78,7 +83,7 @@ extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
         let toValue = position == .presented ? presentedValue : dismissedValue
         isIndependent = false
         targetPosition = position
-        animation.animate(to: toValue, completion: completion)
+        animation.animate(to: toValue, response: response, dampingRatio: dampingRatio, completion: completion)
     }
 
     internal func pause() {

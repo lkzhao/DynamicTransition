@@ -17,6 +17,8 @@ class MatchTransitionDetailView: ComponentRootView {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        transition.response = 3.0
+
         componentView.contentInsetAdjustmentBehavior = .never
 
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTap)))
@@ -32,6 +34,12 @@ class MatchTransitionDetailView: ComponentRootView {
                 Text("\(type(of: self))", font: .boldSystemFont(ofSize: 18))
                 Text("Tap to go back", font: .systemFont(ofSize: 18)).textColor(.secondaryLabel)
             }
+            HStack(spacing: 10, alignItems: .center) {
+                Text("Push Transition", font: .systemFont(ofSize: 18)).flex()
+                Image(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18)).tintColor(.label)
+            }.inset(h: 20).size(height: 70).tappableView { [unowned self] in
+                pushTransition()
+            }.borderColor(.separator).borderWidth(1).cornerCurve(.continuous).cornerRadius(16).inset(h: 20)
             ImageGrid().inset(h: 20)
         }
     }
@@ -43,6 +51,10 @@ class MatchTransitionDetailView: ComponentRootView {
 
     @objc func didTap() {
         navigationController?.popView(animated: true)
+    }
+
+    func pushTransition() {
+        navigationController?.pushView(PushTransitionDetailView(), animated: true)
     }
 
     func matchTransition() {

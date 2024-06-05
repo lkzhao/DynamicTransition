@@ -13,13 +13,14 @@ public protocol NavigationControllerDelegate: AnyObject {
 }
 
 open class NavigationController: UIViewController {
+    private struct TransitionState {
+        let context: NavigationTransitionContext
+        let transition: Transition
+        let source: [UIView]
+        let target: [UIView]
+    }
+
     private struct State {
-        struct TransitionState {
-            let context: NavigationTransitionContext
-            let transition: Transition
-            let source: [UIView]
-            let target: [UIView]
-        }
         var children: [UIView]
         var transitions: [TransitionState] = []
         var nextAction: (NavigationAction, Bool)?
@@ -202,7 +203,7 @@ open class NavigationController: UIViewController {
                 break
             }
             let isPresenting = target.count >= source.count
-            let transition = animated ? transitionFor(isPresenting: isPresenting, from: from, to: to) : NoTransition()
+            let transition = animated ? transitionFor(isPresenting: isPresenting, from: from, to: to) : InstantTransition()
 
             if let transitionState = state.transitions.first(where: { $0.transition === transition }) {
                 // the transition is already running
@@ -224,7 +225,7 @@ open class NavigationController: UIViewController {
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart) { [weak self] context in
                 self?.process(.didUpdateTransition(context))
             }
-            let transitionState = State.TransitionState(context: context, transition: transition, source: source, target: target)
+            let transitionState = TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
 
             runBlock = {

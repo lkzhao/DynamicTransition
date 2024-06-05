@@ -33,13 +33,13 @@ extension UIView {
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }()
 
-    public var lockSafeAreaInsets: Bool {
+    public var lockedSafeAreaInsets: UIEdgeInsets? {
         get {
-            Self.lockedSafeAreaInsets[self] != nil
+            Self.lockedSafeAreaInsets[self]
         }
         set {
             _ = UIView.swizzleSafeAreaInsets
-            Self.lockedSafeAreaInsets[self] = newValue ? safeAreaInsets : nil
+            Self.lockedSafeAreaInsets[self] = newValue
         }
     }
 

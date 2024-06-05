@@ -1,5 +1,5 @@
 //
-//  NoTransition.swift
+//  InstantTransition.swift
 //  
 //
 //  Created by Luke Zhao on 5/25/24.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class NoTransition: NSObject, Transition {
+public class InstantTransition: NSObject, Transition {
     public func animateTransition(context: TransitionContext) {
         let container = context.container
         let from = context.from

@@ -10,6 +10,8 @@ class PushTransitionDetailView: ComponentRootView {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        transition.response = 3.0
+
         componentView.component = VStack(spacing: 10, alignItems: .center) {
             Text("\(type(of: self))", font: .boldSystemFont(ofSize: 18))
             HStack(spacing: 10, alignItems: .center) {

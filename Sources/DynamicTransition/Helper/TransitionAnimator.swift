@@ -13,12 +13,18 @@ public class TransitionAnimator {
     private var children: [AnyHashable: AnyTransitionPropertyAnimator] = [:]
     private var completions: [(TransitionEndPosition) -> Void] = []
 
+    public var response: CGFloat
+    public var dampingRatio: CGFloat
+
     public private(set) var targetPosition: TransitionEndPosition? = nil
+
     public var isAnimating: Bool {
         targetPosition != nil
     }
 
-    public init() {
+    public init(response: CGFloat, dampingRatio: CGFloat) {
+        self.response = response
+        self.dampingRatio = dampingRatio
     }
 
     public subscript<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> TransitionPropertyAnimator<View, Value> {
@@ -26,7 +32,7 @@ public class TransitionAnimator {
         if let animator = children[target] as? TransitionPropertyAnimator<View, Value> {
             return animator
         } else {
-            let animator = TransitionPropertyAnimator<View, Value>(target: target)
+            let animator = TransitionPropertyAnimator<View, Value>(target: target, response: response, dampingRatio: dampingRatio)
             children[target] = animator
             return animator
         }

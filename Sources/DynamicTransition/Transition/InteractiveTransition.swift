@@ -33,6 +33,9 @@ open class InteractiveTransition: NSObject, Transition {
     public private(set) var animator: TransitionAnimator?
     public private(set) var isInteractive: Bool = false
 
+    public var response: CGFloat = 0.3
+    public var dampingRatio: CGFloat = 1.0
+
     public var isAnimating: Bool {
         animator?.isAnimating ?? false
     }
@@ -44,7 +47,7 @@ open class InteractiveTransition: NSObject, Transition {
     }
 
     public func animateTransition(context: TransitionContext) {
-        let animator = TransitionAnimator()
+        let animator = TransitionAnimator(response: response, dampingRatio: dampingRatio)
         animator.addCompletion { position in
             self.didCompleteTransitionAnimation(position: position)
         }
@@ -55,6 +58,8 @@ open class InteractiveTransition: NSObject, Transition {
         setupTransition(context: context, animator: animator)
         animator.seekTo(position: context.isPresenting ? .dismissed : .presented)
         CATransaction.commit()
+
+        TransitionContainerTracker.shared.transitionStart(from: context.from, to: context.to)
 
         if !isInteractive {
             animateTo(position: context.isPresenting ? .presented : .dismissed)
@@ -72,6 +77,8 @@ open class InteractiveTransition: NSObject, Transition {
     private func didCompleteTransitionAnimation(position: TransitionEndPosition) {
         guard let context else { return }
         cleanupTransition(endPosition: position)
+        let didComplete = (position == .presented) == context.isPresenting
+        TransitionContainerTracker.shared.transitionEnd(from: context.from, to: context.to, completed: didComplete)
         self.animator = nil
         self.context = nil
         self.isInteractive = false
