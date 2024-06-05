@@ -133,7 +133,6 @@ public class MatchTransition: InteractiveTransition {
         let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
         let presentedCornerRadius = isFullScreen ? UIScreen.main.displayCornerRadius : container.parentViewController?.sheetPresentationController?.preferredCornerRadius ?? 0
         let dismissedCornerRadius = matchedSourceView?.cornerRadius ?? presentedCornerRadius
-        let containerPresentedFrame = container.bounds
 
         let scaledSize = presentedFrame.size.size(fill: dismissedFrame.size)
         let dismissedScale = scaledSize.width / presentedFrame.width

@@ -82,6 +82,7 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
         animation.baseValue
     }
 
+    /// If true, this animator won't be affected by the global transition animator progress shifting
     public var isIndependent: Bool = false
 
     public var isAnimating: Bool {
@@ -98,16 +99,15 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
         self.dampingRatio = dampingRatio
     }
 
-    /// Set the new target value and apply the offset to the current value
-    /// Note that the value set here is the final value, not the offset value (both `presentedOffsetValue` and `dismissedOffsetValue` are offset values)
+    /// Set a new target value and apply the offset to the current value
+    /// Note that the value set here is the target value (i.e. `presentedValue`, `dismissedValue`), not the offset value (i.e. `presentedOffsetValue` and `dismissedOffsetValue`)
     public func setNewTargetValueAndApplyOffset(position: TransitionEndPosition, newValue: Value) {
-        let offsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
         if position == .presented {
-            currentOffsetValue = Value(currentOffsetValue.simdRepresentation() + offsetValue.simdRepresentation() - presentedOffsetValue.simdRepresentation())
-            presentedOffsetValue = offsetValue
+            currentValue = Value(currentValue.simdRepresentation() + newValue.simdRepresentation() - presentedValue.simdRepresentation())
+            presentedValue = newValue
         } else {
-            currentOffsetValue = Value(currentOffsetValue.simdRepresentation() + offsetValue.simdRepresentation() - dismissedOffsetValue.simdRepresentation())
-            dismissedOffsetValue = offsetValue
+            currentValue = Value(currentValue.simdRepresentation() + newValue.simdRepresentation() - dismissedValue.simdRepresentation())
+            dismissedValue = newValue
         }
     }
 }
