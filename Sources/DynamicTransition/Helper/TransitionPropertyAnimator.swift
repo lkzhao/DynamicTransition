@@ -21,17 +21,17 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
     public var response: CGFloat
     public var dampingRatio: CGFloat
 
-    public var presentedValue: Value {
+    public var presentedOffsetValue: Value {
         didSet {
             if targetPosition == .presented {
-                animation.toValue = presentedValue
+                animation.toValue = presentedOffsetValue
             }
         }
     }
-    public var dismissedValue: Value {
+    public var dismissedOffsetValue: Value {
         didSet {
             if targetPosition == .dismissed {
-                animation.toValue = dismissedValue
+                animation.toValue = dismissedOffsetValue
             }
         }
     }
@@ -67,33 +67,33 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
 
     internal init(target: AnimationTarget<View, Value>, response: CGFloat, dampingRatio: CGFloat) {
         self.animation = AdditiveAnimation(target: target)
-        self.presentedValue = .zero
-        self.dismissedValue = .zero
+        self.presentedOffsetValue = .zero
+        self.dismissedOffsetValue = .zero
         self.response = response
         self.dampingRatio = dampingRatio
     }
 
     /// Set the new target value and apply the offset to the current value
-    /// Note that the value set here is the final value, not the offset value (both `presentedValue` and `dismissedValue` are offset values)
+    /// Note that the value set here is the final value, not the offset value (both `presentedOffsetValue` and `dismissedOffsetValue` are offset values)
     public func setNewTargetValueAndApplyOffset(position: TransitionEndPosition, newValue: Value) {
         let offsetValue = Value(newValue.simdRepresentation() - baseValue.simdRepresentation())
         if position == .presented {
-            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - presentedValue.simdRepresentation())
-            presentedValue = offsetValue
+            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - presentedOffsetValue.simdRepresentation())
+            presentedOffsetValue = offsetValue
         } else {
-            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - dismissedValue.simdRepresentation())
-            dismissedValue = offsetValue
+            value = Value(value.simdRepresentation() + offsetValue.simdRepresentation() - dismissedOffsetValue.simdRepresentation())
+            dismissedOffsetValue = offsetValue
         }
     }
 }
 
 extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
     internal func seekTo(position: TransitionEndPosition) {
-        value = position == .presented ? presentedValue : dismissedValue
+        value = position == .presented ? presentedOffsetValue : dismissedOffsetValue
     }
 
     internal func animateTo(position: TransitionEndPosition, completion: @escaping () -> Void) {
-        let toValue = position == .presented ? presentedValue : dismissedValue
+        let toValue = position == .presented ? presentedOffsetValue : dismissedOffsetValue
         isIndependent = false
         targetPosition = position
         animation.animate(to: toValue, response: response, dampingRatio: dampingRatio, completion: completion)
@@ -106,8 +106,8 @@ extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
 
     internal func shift(progress: Double) {
         guard !isIndependent else { return }
-        let presentedVector = presentedValue.simdRepresentation()
-        let dismissedVector = dismissedValue.simdRepresentation()
+        let presentedVector = presentedOffsetValue.simdRepresentation()
+        let dismissedVector = dismissedOffsetValue.simdRepresentation()
         let progressDiff = Value.SIMDType.Scalar(progress) * (presentedVector - dismissedVector)
         var valueVector = value.simdRepresentation()
         valueVector += progressDiff
