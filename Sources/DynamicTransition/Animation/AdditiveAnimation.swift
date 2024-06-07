@@ -70,7 +70,7 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
     ) {
         let threshold = max(0.1, self.currentOffsetValue.distance(between: toOffset)) * 0.005
         let epsilon = (threshold as? Value.SIMDType.EpsilonType) ?? 0.01
-        if self.currentOffsetValue.simdRepresentation().approximatelyEqual(to: toOffset.simdRepresentation(), epsilon: epsilon) {
+        if self.currentOffsetValue.simdRepresentation().isApproximatelyEqual(to: toOffset.simdRepresentation(), epsilon: epsilon) {
             completion?()
         } else {
             offsetAnimation.configure(response: Value.SIMDType.Scalar(response),

@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/b3ll/Motion",
       "state" : {
-        "revision" : "3b12eaa580a914fd1e2f11c2e42f96a90a90fb64",
-        "version" : "0.1.4"
+        "revision" : "d0439dd8f31ef16c3e17ef12e8d1921b00341d67",
+        "version" : "0.1.5"
       }
     },
     {
