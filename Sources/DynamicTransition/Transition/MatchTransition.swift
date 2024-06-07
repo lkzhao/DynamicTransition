@@ -88,7 +88,7 @@ public class MatchTransition: InteractiveTransition {
         background.addSubview(overlayView)
         background.addSubview(foregroundContainerView)
         foregroundContainerView.contentView.addSubview(foreground)
-        foregroundContainerView.lockedSafeAreaInsets = container.safeAreaInsets
+        foreground.lockedSafeAreaInsets = container.safeAreaInsets
 
         context.to.setNeedsLayout()
         context.to.layoutIfNeeded()
@@ -193,7 +193,7 @@ public class MatchTransition: InteractiveTransition {
         scrollViewObservers.removeAll()
         matchedSourceView?.isHidden = false
         overlayView?.removeFromSuperview()
-        foregroundContainerView?.lockedSafeAreaInsets = nil
+        context.foreground.lockedSafeAreaInsets = nil
         foregroundContainerView?.removeFromSuperview()
         self.sourceViewSnapshot?.removeFromSuperview()
 

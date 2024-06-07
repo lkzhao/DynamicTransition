@@ -44,15 +44,19 @@ extension UIView {
     }
 
     @objc var swizzled_safeAreaInsets: UIEdgeInsets {
-        if !Self.lockedSafeAreaInsets.isEmpty,
-            let lockedInsetSuperview = superviewPassing(test: { Self.lockedSafeAreaInsets[$0] != nil }),
-            let superviewInset = Self.lockedSafeAreaInsets[lockedInsetSuperview] {
-            let frame = lockedInsetSuperview.convert(bounds, from: self)
-            let superviewBounds = lockedInsetSuperview.bounds.inset(by: superviewInset)
-            return UIEdgeInsets(top: max(0, superviewBounds.minY - frame.minY),
-                                left: max(0, superviewBounds.minX - frame.minX),
-                                bottom: max(0, frame.maxY - superviewBounds.maxY),
-                                right: max(0, frame.maxX - superviewBounds.maxX))
+        if !Self.lockedSafeAreaInsets.isEmpty {
+            if let insets = Self.lockedSafeAreaInsets[self] {
+                return insets
+            } else if
+                let lockedInsetSuperview = superviewPassing(test: { Self.lockedSafeAreaInsets[$0] != nil }),
+                let superviewInset = Self.lockedSafeAreaInsets[lockedInsetSuperview] {
+                let frame = lockedInsetSuperview.convert(bounds, from: self)
+                let superviewBounds = lockedInsetSuperview.bounds.inset(by: superviewInset)
+                return UIEdgeInsets(top: max(0, superviewBounds.minY - frame.minY),
+                                    left: max(0, superviewBounds.minX - frame.minX),
+                                    bottom: max(0, frame.maxY - superviewBounds.maxY),
+                                    right: max(0, frame.maxX - superviewBounds.maxX))
+            }
         }
         return self.swizzled_safeAreaInsets
     }
