@@ -13,9 +13,6 @@ public protocol MatchTransitionDelegate {
     /// Provide the matched view from the current object's own view hierarchy for the match transition
     func matchedViewFor(transition: MatchTransition, otherView: UIView) -> UIView?
 
-    /// The matched view will be inserted below the returned view if provided
-    func matchedViewInsertionBelowTargetView(transition: MatchTransition) -> UIView?
-
     /// Can be used to customize the transition and add extra animation to the animator
     func matchTransitionWillBegin(transition: MatchTransition)
 }
@@ -107,11 +104,6 @@ public class MatchTransition: InteractiveTransition {
         }
 
         setupAnimation(context: context, animator: animator)
-
-        if let targetView = backgroundDelegate?.matchedViewInsertionBelowTargetView(transition: self) {
-            background.insertSubview(overlayView, belowSubview: targetView)
-            background.insertSubview(foregroundContainerView, belowSubview: targetView)
-        }
 
         backgroundDelegate?.matchTransitionWillBegin(transition: self)
         foregroundDelegate?.matchTransitionWillBegin(transition: self)

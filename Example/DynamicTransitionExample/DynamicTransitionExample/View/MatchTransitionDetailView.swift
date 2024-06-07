@@ -83,10 +83,6 @@ extension MatchTransitionDetailView: MatchTransitionDelegate {
         }
     }
 
-    func matchedViewInsertionBelowTargetView(transition: DynamicTransition.MatchTransition) -> UIView? {
-        nil
-    }
-
     func matchTransitionWillBegin(transition: DynamicTransition.MatchTransition) {
         // extra animation
     }
