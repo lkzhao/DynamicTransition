@@ -79,7 +79,12 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
     }
 
     public var baseValue: Value {
-        animation.baseValue
+        get {
+            animation.baseValue
+        }
+        set {
+            animation.baseValue = newValue
+        }
     }
 
     /// If true, this animator won't be affected by the global transition animator progress shifting
