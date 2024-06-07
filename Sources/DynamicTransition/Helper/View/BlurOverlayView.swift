@@ -8,13 +8,13 @@
 import UIKit
 import BaseToolbox
 
-class BlurOverlayView: UIView {
-    let effectView = UIVisualEffectView(effect: nil)
-    let animator = UIViewPropertyAnimator(duration: 0.3, curve: .easeInOut)
-    let overlayView = UIView().then {
+public class BlurOverlayView: UIView {
+    public let effectView = UIVisualEffectView(effect: nil)
+    public let animator = UIViewPropertyAnimator(duration: 0.3, curve: .easeInOut)
+    public let overlayView = UIView().then {
         $0.backgroundColor = UIColor.systemBackground
     }
-    var progress: CGFloat = 0.0 {
+    public var progress: CGFloat = 0.0 {
         didSet {
             let progress = progress.clamp(0.0, 1.0)
             animator.fractionComplete = progress * 0.5
@@ -32,14 +32,14 @@ class BlurOverlayView: UIView {
         addSubview(overlayView)
     }
 
-    override func didMoveToWindow() {
+    public override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
             animator.stopAnimation(true)
         }
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         effectView.frameWithoutTransform = bounds
         overlayView.frameWithoutTransform = bounds

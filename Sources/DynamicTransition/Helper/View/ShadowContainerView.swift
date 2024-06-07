@@ -7,22 +7,22 @@
 
 import UIKit
 
-class ShadowContainerView: UIView {
-    let contentView = UIView()
+public class ShadowContainerView: UIView {
+    public let contentView = UIView()
 
-    override var cornerRadius: CGFloat {
+    public override var cornerRadius: CGFloat {
         didSet {
             contentView.cornerRadius = cornerRadius
         }
     }
 
-    override var frameWithoutTransform: CGRect {
+    public override var frameWithoutTransform: CGRect {
         didSet {
             recalculateShadowPath()
         }
     }
 
-    override init(frame: CGRect) {
+    public override init(frame: CGRect) {
         super.init(frame: frame)
         addSubview(contentView)
         cornerCurve = .continuous
@@ -39,7 +39,7 @@ class ShadowContainerView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         contentView.frame = bounds
     }

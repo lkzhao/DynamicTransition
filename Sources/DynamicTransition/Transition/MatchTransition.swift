@@ -48,8 +48,8 @@ public class MatchTransition: InteractiveTransition {
         $0.delegate = self
     }
 
-    var overlayView: BlurOverlayView?
-    var foregroundContainerView: ShadowContainerView?
+    public private(set) var overlayView: BlurOverlayView?
+    public private(set) var foregroundContainerView: ShadowContainerView?
     public private(set) var matchedSourceView: UIView?
     public private(set) var matchedDestinationView: UIView?
     public private(set) var sourceViewSnapshot: UIView?
