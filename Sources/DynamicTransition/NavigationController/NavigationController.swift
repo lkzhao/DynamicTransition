@@ -318,6 +318,10 @@ open class NavigationController: UIViewController {
 //        printState()
     }
 
+    public func updateStatusBarStyle() {
+        didUpdateViews()
+    }
+
     public func printState() {
         let views = displayState.views.map {
             "\(type(of: $0))"
