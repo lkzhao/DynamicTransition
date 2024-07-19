@@ -130,7 +130,7 @@ open class NavigationController: UIViewController, StateManaged {
         return (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? defaultTransition
     }
 
-    public func reduce(state: inout State, action: Action) -> Effect {
+    public func process(state: inout State, action: Action) {
         switch action {
         case .navigate(let navigationAction, let animated):
             let source = state.currentViews
@@ -167,7 +167,7 @@ open class NavigationController: UIViewController, StateManaged {
             let transitionState = TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
 
-            return .run {
+            runAfterProcess {
                 transition.animateTransition(context: context)
             }
         case .didUpdateTransition(_):
@@ -179,13 +179,10 @@ open class NavigationController: UIViewController, StateManaged {
                 state.children = children
                 state.nextAction = nil
                 if let (navigationAction, animated) = nextAction {
-                    return .run { [weak self] in
-                        self?.send(.navigate(navigationAction, animated: animated))
-                    }
+                    send(.navigate(navigationAction, animated: animated))
                 }
             }
         }
-        return .none
     }
 
     open override func viewDidLayoutSubviews() {
