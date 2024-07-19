@@ -7,20 +7,27 @@
 
 import UIKit
 import BaseToolbox
+import StateManaged
 
 public protocol NavigationControllerDelegate: AnyObject {
     func navigationControllerDidUpdate(views: [UIView])
 }
 
-open class NavigationController: UIViewController {
-    private struct TransitionState {
+open class NavigationController: UIViewController, StateManaged {
+
+    struct DisplayState {
+        var views: [UIView]
+        var preferredStatusBarStyle: UIStatusBarStyle
+    }
+
+    struct TransitionState {
         let context: NavigationTransitionContext
         let transition: Transition
         let source: [UIView]
         let target: [UIView]
     }
 
-    private struct State {
+    public struct State {
         var children: [UIView]
         var transitions: [TransitionState] = []
         var nextAction: (NavigationAction, Bool)?
@@ -36,12 +43,7 @@ open class NavigationController: UIViewController {
         }
     }
 
-    private struct DisplayState {
-        var views: [UIView]
-        var preferredStatusBarStyle: UIStatusBarStyle
-    }
-
-    private enum NavigationAction {
+    public enum NavigationAction {
         case push(UIView)
         case dismiss(UIView)
         case pop
@@ -72,81 +74,20 @@ open class NavigationController: UIViewController {
         }
     }
 
-    private enum Event {
+    public enum Action {
         case navigate(NavigationAction, animated: Bool)
         case didUpdateTransition(NavigationTransitionContext)
-    }
-
-    private class NavigationTransitionContext: TransitionContext {
-        let id = UUID()
-        var container: UIView
-        var from: UIView
-        var to: UIView
-
-        var isPresenting: Bool
-        var isInteractive: Bool
-        var isCompleting: Bool
-        var isCompleted: Bool
-
-        var onUpdate: (NavigationTransitionContext) -> Void
-
-        init(container: UIView, isPresenting: Bool, from: UIView, to: UIView, isInteractive: Bool, onUpdate: @escaping (NavigationTransitionContext) -> Void) {
-            self.container = container
-            self.isPresenting = isPresenting
-            self.from = from
-            self.to = to
-            self.onUpdate = onUpdate
-            self.isInteractive = isInteractive
-            self.isCompleting = true
-            self.isCompleted = false
-            (from as? RootViewType)?.willDisappear(animated: true)
-            (to as? RootViewType)?.willAppear(animated: true)
-        }
-
-        func completeTransition() {
-            guard !isCompleted else {
-                assertionFailure("Transition is already completed")
-                return
-            }
-            isCompleted = true
-            if isCompleting {
-                (from as? RootViewType)?.didDisappear(animated: true)
-                (to as? RootViewType)?.didAppear(animated: true)
-            } else {
-                (to as? RootViewType)?.didDisappear(animated: true)
-                (from as? RootViewType)?.didAppear(animated: true)
-            }
-            onUpdate(self)
-        }
-
-        func beginInteractiveTransition() {
-            guard !isCompleted else {
-                assertionFailure("Transition is already completed")
-                return
-            }
-            isInteractive = true
-        }
-
-        func endInteractiveTransition(_ isCompleting: Bool) {
-            guard !isCompleted else {
-                assertionFailure("Transition is already completed")
-                return
-            }
-            isInteractive = false
-            if isCompleting != self.isCompleting {
-                (from as? RootViewType)?.willAppear(animated: true)
-                (to as? RootViewType)?.willDisappear(animated: true)
-                self.isCompleting = isCompleting
-                onUpdate(self)
-            }
-        }
     }
 
     public weak var delegate: NavigationControllerDelegate?
 
     public var defaultTransition: Transition = PushTransition()
 
-    private var state: State
+    public var state: State {
+        didSet {
+            displayState = state.currentDisplayState
+        }
+    }
 
     private var displayState: DisplayState {
         didSet {
@@ -157,6 +98,7 @@ open class NavigationController: UIViewController {
             }
             if displayState.views != oldValue.views {
                 delegate?.navigationControllerDidUpdate(views: displayState.views)
+                view.setNeedsLayout()
             }
         }
     }
@@ -171,7 +113,7 @@ open class NavigationController: UIViewController {
 
     public init(rootView: UIView) {
         self.state = State(children: [rootView])
-        self.displayState = DisplayState(views: [rootView], preferredStatusBarStyle: (rootView as? RootViewType)?.preferredStatusBarStyle ?? .default)
+        self.displayState = state.currentDisplayState
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
         view.backgroundColor = .systemBackground
@@ -188,13 +130,10 @@ open class NavigationController: UIViewController {
         return (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? defaultTransition
     }
 
-    private func process(_ event: Event) {
-        var state = state
-        var runBlock: (() -> Void)? = nil
-
-        switch event {
+    public func reduce(state: inout State, action: Action) -> Effect {
+        switch action {
         case .navigate(let navigationAction, let animated):
-            let source = displayState.views
+            let source = state.currentViews
             let target = navigationAction.target(from: source)
             guard target != source, let to = target.last, let from = source.last else { break }
             guard from != to else {
@@ -223,14 +162,13 @@ open class NavigationController: UIViewController {
 
             let isInteractiveStart = transition.wantsInteractiveStart
             let context = NavigationTransitionContext(container: view, isPresenting: isPresenting, from: from, to: to, isInteractive: isInteractiveStart) { [weak self] context in
-                self?.process(.didUpdateTransition(context))
+                self?.send(.didUpdateTransition(context))
             }
             let transitionState = TransitionState(context: context, transition: transition, source: source, target: target)
             state.transitions.append(transitionState)
 
-            runBlock = {
+            return .run {
                 transition.animateTransition(context: context)
-                self.didUpdateViews()
             }
         case .didUpdateTransition(_):
             if state.transitions.allSatisfy({ $0.context.isCompleted }) {
@@ -240,21 +178,14 @@ open class NavigationController: UIViewController {
                 state.transitions = []
                 state.children = children
                 state.nextAction = nil
-                runBlock = {
-                    self.didUpdateViews()
-                    if let (navigationAction, animated) = nextAction {
-                        self.process(.navigate(navigationAction, animated: animated))
+                if let (navigationAction, animated) = nextAction {
+                    return .run { [weak self] in
+                        self?.send(.navigate(navigationAction, animated: animated))
                     }
-                }
-            } else {
-                runBlock = {
-                    self.didUpdateViews()
                 }
             }
         }
-
-        self.state = state
-        runBlock?()
+        return .none
     }
 
     open override func viewDidLayoutSubviews() {
@@ -289,37 +220,31 @@ open class NavigationController: UIViewController {
     // MARK: - Navigation methods
 
     open func pushView(_ view: UIView, animated: Bool = true) {
-        process(.navigate(.push(view), animated: animated))
+        send(.navigate(.push(view), animated: animated))
     }
 
     open func popView(animated: Bool = true) {
-        process(.navigate(.pop, animated: animated))
+        send(.navigate(.pop, animated: animated))
     }
 
     open func popToRootView(animated: Bool = true) {
-        process(.navigate(.popToRoot, animated: animated))
+        send(.navigate(.popToRoot, animated: animated))
     }
 
     open func dismissToView(_ view: UIView, animated: Bool = true) {
-        process(.navigate(.dismiss(view), animated: animated))
+        send(.navigate(.dismiss(view), animated: animated))
     }
 
     open func setViews(_ views: [UIView], animated: Bool = true) {
-        process(.navigate(.set(views), animated: animated))
+        send(.navigate(.set(views), animated: animated))
     }
 
     open override var preferredStatusBarStyle: UIStatusBarStyle {
         displayState.preferredStatusBarStyle
     }
 
-    private func didUpdateViews() {
-        displayState = state.currentDisplayState
-        view.setNeedsLayout()
-//        printState()
-    }
-
     public func updateStatusBarStyle() {
-        didUpdateViews()
+        displayState = state.currentDisplayState
     }
 
     public func printState() {
