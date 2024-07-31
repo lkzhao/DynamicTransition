@@ -67,6 +67,18 @@ public class TransitionAnimator {
             }
         }
     }
+    
+    public func forceCompletion(position: TransitionEndPosition) {
+        guard targetPosition == nil else {
+            assertionFailure("You should pause the animation before forcing completion")
+            return
+        }
+        targetPosition = position
+        seekTo(position: position)
+        for completion in completions.reversed() {
+            completion(position)
+        }
+    }
 
 
     public func pause() {

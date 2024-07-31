@@ -12,6 +12,7 @@ public protocol TransitionContext {
     var to: UIView { get }
     var container: UIView { get }
     var isPresenting: Bool { get }
+    var isCompleting: Bool { get }
 
     func completeTransition()
 

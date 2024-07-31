@@ -16,7 +16,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/lkzhao/BaseToolbox", from: "0.6.0"),
         .package(url: "https://github.com/kylebshr/ScreenCorners", from: "1.0.1"),
-        .package(url: "https://github.com/lkzhao/StateManaged", from: "0.0.3"),
+        .package(url: "https://github.com/lkzhao/StateManaged", from: "0.0.4"),
         .package(url: "https://github.com/b3ll/Motion", from: "0.1.5"),
     ],
     targets: [

@@ -105,6 +105,19 @@ open class InteractiveTransition: NSObject, Transition {
         animationWillStart(targetPosition: position)
         animator.animateTo(position: position)
     }
+    
+    public func forceCompletion(position: TransitionEndPosition) {
+        guard let animator, let context else {
+            assertionFailure()
+            return
+        }
+        if isInteractive {
+            isInteractive = false
+            context.endInteractiveTransition((position == .presented) == context.isPresenting)
+        }
+        animationWillStart(targetPosition: position)
+        animator.forceCompletion(position: position)
+    }
 
     // MARK: - Subclass hooks
 
