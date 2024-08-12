@@ -8,7 +8,7 @@
 import UIKit
 import BaseToolbox
 
-public class PushTransition: InteractiveTransition {
+open class PushTransition: InteractiveTransition {
     public lazy var horizontalDismissGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(gr:))).then {
         $0.delegate = self
         if #available(iOS 13.4, *) {
@@ -25,11 +25,11 @@ public class PushTransition: InteractiveTransition {
     private var overlayView: UIView?
     private var totalTranslation: CGPoint = .zero
 
-    public override func canTransitionSimutanously(with transition: Transition) -> Bool {
+    open override func canTransitionSimutanously(with transition: Transition) -> Bool {
         transition is PushTransition || transition is MatchTransition
     }
 
-    public override func setupTransition(context: any TransitionContext, animator: TransitionAnimator) {
+    open override func setupTransition(context: any TransitionContext, animator: TransitionAnimator) {
         let container = context.container
         let foregroundView = context.foreground
         let backgroundView = context.background
@@ -59,7 +59,7 @@ public class PushTransition: InteractiveTransition {
         self.overlayView = overlayView
     }
 
-    public override func animationWillStart(targetPosition: TransitionEndPosition) {
+    open override func animationWillStart(targetPosition: TransitionEndPosition) {
         guard let context else { return }
         let isPresenting = targetPosition == .presented
         if isPresenting {
@@ -71,7 +71,7 @@ public class PushTransition: InteractiveTransition {
         overlayView?.isUserInteractionEnabled = isPresenting
     }
 
-    public override func cleanupTransition(endPosition: TransitionEndPosition) {
+    open override func cleanupTransition(endPosition: TransitionEndPosition) {
         guard let context else { return }
         context.foreground.lockedSafeAreaInsets = nil
         context.foreground.isUserInteractionEnabled = true
@@ -113,7 +113,7 @@ public class PushTransition: InteractiveTransition {
 }
 
 extension PushTransition: UIGestureRecognizerDelegate {
-    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let gestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = gestureRecognizer.velocity(in: nil)
         if gestureRecognizer == interruptibleHorizontalDismissGestureRecognizer || gestureRecognizer == horizontalDismissGestureRecognizer {
@@ -124,7 +124,7 @@ extension PushTransition: UIGestureRecognizerDelegate {
         return false
     }
 
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         if otherGestureRecognizer is UIPanGestureRecognizer, let scrollView = otherGestureRecognizer.view as? UIScrollView, otherGestureRecognizer == scrollView.panGestureRecognizer {
             return true
         }
