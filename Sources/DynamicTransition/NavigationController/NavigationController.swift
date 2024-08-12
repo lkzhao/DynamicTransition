@@ -97,6 +97,7 @@ open class NavigationController: UIViewController, StateManaged {
                 }
             }
             if displayState.views != oldValue.views {
+                didUpdateViews()
                 delegate?.navigationControllerDidUpdate(views: displayState.views)
                 view.setNeedsLayout()
             }
@@ -116,7 +117,6 @@ open class NavigationController: UIViewController, StateManaged {
         self.displayState = state.currentDisplayState
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
-        view.backgroundColor = .systemBackground
         view.addSubview(rootView)
     }
 
@@ -238,6 +238,11 @@ open class NavigationController: UIViewController, StateManaged {
 
     open override var preferredStatusBarStyle: UIStatusBarStyle {
         displayState.preferredStatusBarStyle
+    }
+
+    // Subclass override
+    open func didUpdateViews() {
+
     }
 
     public func updateStatusBarStyle() {

@@ -22,7 +22,7 @@ open class PushTransition: InteractiveTransition {
         }
     }
 
-    private var overlayView: UIView?
+    public var overlayView: UIView?
     private var totalTranslation: CGPoint = .zero
 
     open override func canTransitionSimutanously(with transition: Transition) -> Bool {
