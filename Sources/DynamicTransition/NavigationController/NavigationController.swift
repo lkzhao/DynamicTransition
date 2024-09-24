@@ -22,7 +22,7 @@ open class NavigationController: UIViewController, StateManaged {
 
     struct TransitionState {
         let context: NavigationTransitionContext
-        let transition: Transition
+        let transition: DynamicTransition.Transition
         let source: [UIView]
         let target: [UIView]
     }
@@ -81,7 +81,7 @@ open class NavigationController: UIViewController, StateManaged {
 
     public weak var delegate: NavigationControllerDelegate?
 
-    public var defaultTransition: Transition = PushTransition()
+    public var defaultTransition: DynamicTransition.Transition = PushTransition()
 
     public var state: State {
         didSet {
@@ -124,7 +124,7 @@ open class NavigationController: UIViewController, StateManaged {
         fatalError("init(coder:) has not been implemented")
     }
 
-    open func transitionFor(isPresenting: Bool, from: UIView, to: UIView) -> Transition {
+    open func transitionFor(isPresenting: Bool, from: UIView, to: UIView) -> DynamicTransition.Transition {
         let foreground = isPresenting ? to : from
         let background = isPresenting ? from : to
         return (foreground as? TransitionProvider)?.transitionFor(presenting: isPresenting, otherView: background) ?? defaultTransition
