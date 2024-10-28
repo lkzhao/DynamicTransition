@@ -83,12 +83,6 @@ open class NavigationController: UIViewController, StateManaged {
 
     public var defaultTransition: DynamicTransition.Transition = PushTransition()
 
-    public var state: State {
-        didSet {
-            displayState = state.currentDisplayState
-        }
-    }
-
     private var displayState: DisplayState {
         didSet {
             if displayState.preferredStatusBarStyle != oldValue.preferredStatusBarStyle {
@@ -112,12 +106,17 @@ open class NavigationController: UIViewController, StateManaged {
         displayState.views.last!
     }
 
+    var stateObserver: AnyObject?
     public init(rootView: UIView) {
-        self.state = State(children: [rootView])
+        let state = State(children: [rootView])
         self.displayState = state.currentDisplayState
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
+        setInitialState(state)
         view.addSubview(rootView)
+        stateObserver = observeState { [weak self] in
+            self?.displayState = $0.currentDisplayState
+        }
     }
 
     public required init?(coder: NSCoder) {
