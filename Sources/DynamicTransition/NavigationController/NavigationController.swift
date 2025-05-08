@@ -85,6 +85,24 @@ open class NavigationController: UIViewController {
         }
     }
 
+    private var _preferredStatusBarHidden: Bool = false {
+        didSet {
+            guard _preferredStatusBarHidden != oldValue else { return }
+            UIView.animate(withDuration: 0.3, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+                self.setNeedsStatusBarAppearanceUpdate()
+            }
+        }
+    }
+
+    private var _preferredHomeIndicatorAutoHidden: Bool = false {
+        didSet {
+            guard _preferredHomeIndicatorAutoHidden != oldValue else { return }
+            UIView.animate(withDuration: 0.3, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+                self.setNeedsUpdateOfHomeIndicatorAutoHidden()
+            }
+        }
+    }
+
     private var state: NavigationState {
         didSet {
             updateViews()
@@ -101,6 +119,7 @@ open class NavigationController: UIViewController {
         setupCustomPresentation()
         super.init(nibName: nil, bundle: nil)
         view.addSubview(rootView)
+        updateStatusBarStyle()
     }
 
     public required init?(coder: NSCoder) {
@@ -223,13 +242,24 @@ open class NavigationController: UIViewController {
         _preferredStatusBarStyle
     }
 
+    open override var prefersStatusBarHidden: Bool {
+        _preferredStatusBarHidden
+    }
+
+    open override var prefersHomeIndicatorAutoHidden: Bool {
+        _preferredHomeIndicatorAutoHidden
+    }
+
     // Subclass override
     open func didUpdateViews() {
 
     }
 
     public func updateStatusBarStyle() {
-        _preferredStatusBarStyle = views.last.flatMap { ($0 as? RootViewType)?.preferredStatusBarStyle } ?? .default
+        let topView = views.last.flatMap { $0 as? RootViewType }
+        _preferredStatusBarStyle = topView?.preferredStatusBarStyle ?? .default
+        _preferredStatusBarHidden = topView?.prefersStatusBarHidden ?? false
+        _preferredHomeIndicatorAutoHidden = topView?.prefersHomeIndicatorAutoHidden ?? false
     }
 
     public func printState() {
