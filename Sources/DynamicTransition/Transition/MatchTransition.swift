@@ -50,6 +50,8 @@ public class MatchTransition: InteractiveTransition {
     public private(set) var matchedSourceView: UIView?
     public private(set) var matchedDestinationView: UIView?
     public private(set) var sourceViewSnapshot: UIView?
+    public var defaultMatchFrame: CGRect?
+    public var defaultMatchCornerRadius: CGFloat?
     var scrollViewObservers: [Any] = []
     var isMatched: Bool {
         matchedSourceView != nil
@@ -124,7 +126,7 @@ public class MatchTransition: InteractiveTransition {
 
         let isFullScreen = container.window?.convert(container.bounds, from: container) == container.window?.bounds
         let presentedCornerRadius = isFullScreen ? UIScreen.main.displayCornerRadius : container.parentViewController?.sheetPresentationController?.preferredCornerRadius ?? 0
-        let dismissedCornerRadius = matchedSourceView?.cornerRadius ?? presentedCornerRadius
+        let dismissedCornerRadius = matchedSourceView?.cornerRadius ?? defaultMatchCornerRadius ?? presentedCornerRadius
 
         let scaledSize = presentedFrame.size.size(fill: dismissedFrame.size)
         let dismissedScale = scaledSize.width / presentedFrame.width
@@ -149,6 +151,10 @@ public class MatchTransition: InteractiveTransition {
             sourceViewSnapshot.frameWithoutTransform = CGRect(center: presentedFrame.center, size: dismissedFrame.size)
             sourceViewSnapshot.scale = 1 / dismissedScale
             animator[sourceViewSnapshot, \UIView.alpha].presentedValue = 0
+        }
+
+        if matchedSourceView == nil {
+            animator[foregroundContainerView, \UIView.alpha].dismissedValue = 0.0
         }
     }
 
@@ -218,7 +224,7 @@ public class MatchTransition: InteractiveTransition {
             let frame = matchedSourceView.frameWithoutTransform
             dismissFrame = context.background.convert(frame, from: superview)
         } else {
-            dismissFrame = container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
+            dismissFrame = defaultMatchFrame ?? container.bounds.offsetBy(dx: container.bounds.width, dy: 0)
         }
         if isMatched {
             if let matchedDestinationView {
