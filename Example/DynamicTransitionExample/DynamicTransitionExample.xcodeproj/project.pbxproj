@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A3150FDC2E89D53E00DE4709 /* PageFlipDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */; };
 		A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */; };
 		A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */; };
 		A3D0A7AA2B00842100AC6A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7A92B00842100AC6A73 /* Assets.xcassets */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageFlipDetailView.swift; sourceTree = "<group>"; };
 		A3D0A79D2B00842000AC6A73 /* DynamicTransitionExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DynamicTransitionExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				B1712C672C02C24C00B46B91 /* ImageGrid.swift */,
 				B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */,
 				B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */,
+				A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */,
 				B17042E92C0FBCCC0095EA3F /* ExampleNavigationController.swift */,
 				B1712C632C02BB4500B46B91 /* ComponentRootView.swift */,
 			);
@@ -185,6 +188,7 @@
 				A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */,
 				B1712C682C02C24C00B46B91 /* ImageGrid.swift in Sources */,
 				B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */,
+				A3150FDC2E89D53E00DE4709 /* PageFlipDetailView.swift in Sources */,
 				A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

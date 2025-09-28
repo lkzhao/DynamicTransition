@@ -6,6 +6,7 @@
 //
 
 struct ImageGrid: ComponentBuilder {
+    var onTap: (Int) -> Void
     func build() -> some Component {
         Waterfall(columns: 2, spacing: 10) {
             for i in 1...5 {
@@ -14,10 +15,7 @@ struct ImageGrid: ComponentBuilder {
                 Image(image)
                     .size(width: .fill, height: .aspectPercentage(image.size.height / image.size.width))
                     .tappableView {
-                        let matchDetailView = MatchTransitionDetailView()
-                        matchDetailView.imageName = imageName
-                        matchDetailView.image = image
-                        $0.navigationController?.pushView(matchDetailView, animated: true)
+                        onTap(i)
                     }
                     .cornerRadius(16)
                     .cornerCurve(.continuous)
