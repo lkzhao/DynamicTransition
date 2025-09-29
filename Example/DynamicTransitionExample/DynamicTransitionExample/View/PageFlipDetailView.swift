@@ -1,12 +1,12 @@
 //
-//  MatchTransitionDetailView.swift
+//  PageFlipDetailView.swift
 //  DynamicTransitionExample
 //
-//  Created by Luke Zhao on 5/25/24.
+//  Created by Luke Zhao on 9/28/25.
 //
 
-class MatchTransitionDetailView: ComponentRootView {
-    let transition = MatchTransition()
+class PageFlipDetailView: ComponentRootView {
+    let transition = PageFlipTransition()
 
     var imageIndex: Int? {
         didSet {
@@ -20,7 +20,6 @@ class MatchTransitionDetailView: ComponentRootView {
 
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTap)))
         addGestureRecognizer(transition.horizontalDismissGestureRecognizer)
-        addGestureRecognizer(transition.verticalDismissGestureRecognizer)
 
         reloadComponent()
     }
@@ -35,9 +34,9 @@ class MatchTransitionDetailView: ComponentRootView {
                 Text("Tap to go back", font: .systemFont(ofSize: 18)).textColor(.secondaryLabel)
             }
             ImageGrid { [weak self] in
-                let matchDetailView = MatchTransitionDetailView()
-                matchDetailView.imageIndex = $0
-                self?.navigationController?.pushView(matchDetailView, animated: true)
+                let view = PageFlipDetailView()
+                view.imageIndex = $0
+                self?.navigationController?.pushView(view, animated: true)
             }.inset(h: 20)
         }
     }
@@ -47,24 +46,23 @@ class MatchTransitionDetailView: ComponentRootView {
     }
 }
 
-extension MatchTransitionDetailView: TransitionProvider {
+extension PageFlipDetailView: TransitionProvider {
     func transitionFor(presenting: Bool, otherView: UIView) -> (any Transition)? {
         transition
     }
 }
 
-extension MatchTransitionDetailView: MatchTransitionDelegate {
-    func matchedViewFor(transition: DynamicTransition.MatchTransition, otherView: UIView) -> UIView? {
+extension PageFlipDetailView: PageFlipTransitionDelegate {
+    func pageFlipTransitionWillBegin(transition: DynamicTransition.PageFlipTransition) {
+    }
+    
+    func matchedViewFor(transition: DynamicTransition.PageFlipTransition, otherView: UIView) -> UIView? {
         if transition.context?.foreground == self {
             return componentView.visibleView(id: "image")
-        } else if let otherView = otherView as? MatchTransitionDetailView, let imageIndex = otherView.imageIndex {
+        } else if let otherView = otherView as? PageFlipDetailView, let imageIndex = otherView.imageIndex {
             return componentView.visibleView(id: "item\(imageIndex)")
         } else {
             return nil
         }
-    }
-
-    func matchTransitionWillBegin(transition: DynamicTransition.MatchTransition) {
-        // extra animation
     }
 }

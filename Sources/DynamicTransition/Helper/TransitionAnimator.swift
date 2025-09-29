@@ -32,7 +32,8 @@ public class TransitionAnimator {
         if let animator = children[target] as? TransitionPropertyAnimator<View, Value> {
             return animator
         } else {
-            let animator = TransitionPropertyAnimator<View, Value>(target: target, response: response, dampingRatio: dampingRatio)
+            let animator = TransitionPropertyAnimator<View, Value>(target: target)
+            animator.animationConfig = .spring(response: response, dampingRatio: dampingRatio)
             children[target] = animator
             return animator
         }

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A3150FDC2E89D53E00DE4709 /* PageFlipDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */; };
+		A3A138E52E89EAB800149228 /* MultiFlipHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A138E42E89EAB800149228 /* MultiFlipHomeView.swift */; };
+		A3A13BF12E89F0AD00149228 /* BlurImageShadow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A13BF02E89F0AD00149228 /* BlurImageShadow.swift */; };
 		A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */; };
 		A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */; };
 		A3D0A7AA2B00842100AC6A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D0A7A92B00842100AC6A73 /* Assets.xcassets */; };
@@ -22,6 +25,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageFlipDetailView.swift; sourceTree = "<group>"; };
+		A3A138E42E89EAB800149228 /* MultiFlipHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiFlipHomeView.swift; sourceTree = "<group>"; };
+		A3A13BEF2E89F09400149228 /* UIComponent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = UIComponent; path = /Users/luke/code/UIComponent; sourceTree = "<absolute>"; };
+		A3A13BF02E89F0AD00149228 /* BlurImageShadow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurImageShadow.swift; sourceTree = "<group>"; };
 		A3D0A79D2B00842000AC6A73 /* DynamicTransitionExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DynamicTransitionExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -70,6 +77,7 @@
 		A3D0A79F2B00842000AC6A73 /* DynamicTransitionExample */ = {
 			isa = PBXGroup;
 			children = (
+				A3A13BEF2E89F09400149228 /* UIComponent */,
 				A3D0A7B42B00842800AC6A73 /* DynamicTransition */,
 				A3D0A7A02B00842000AC6A73 /* AppDelegate.swift */,
 				A3D0A7A22B00842000AC6A73 /* SceneDelegate.swift */,
@@ -95,6 +103,9 @@
 				B1712C672C02C24C00B46B91 /* ImageGrid.swift */,
 				B1712C612C02BB3A00B46B91 /* PushTransitionDetailView.swift */,
 				B1712C652C02BB6800B46B91 /* MatchTransitionDetailView.swift */,
+				A3A138E42E89EAB800149228 /* MultiFlipHomeView.swift */,
+				A3A13BF02E89F0AD00149228 /* BlurImageShadow.swift */,
+				A3150FDB2E89D53E00DE4709 /* PageFlipDetailView.swift */,
 				B17042E92C0FBCCC0095EA3F /* ExampleNavigationController.swift */,
 				B1712C632C02BB4500B46B91 /* ComponentRootView.swift */,
 			);
@@ -182,9 +193,12 @@
 				B1712C642C02BB4500B46B91 /* ComponentRootView.swift in Sources */,
 				B1712C662C02BB6800B46B91 /* MatchTransitionDetailView.swift in Sources */,
 				B17042EA2C0FBCCC0095EA3F /* ExampleNavigationController.swift in Sources */,
+				A3A13BF12E89F0AD00149228 /* BlurImageShadow.swift in Sources */,
+				A3A138E52E89EAB800149228 /* MultiFlipHomeView.swift in Sources */,
 				A3D0A7A12B00842000AC6A73 /* AppDelegate.swift in Sources */,
 				B1712C682C02C24C00B46B91 /* ImageGrid.swift in Sources */,
 				B1712C622C02BB3A00B46B91 /* PushTransitionDetailView.swift in Sources */,
+				A3150FDC2E89D53E00DE4709 /* PageFlipDetailView.swift in Sources */,
 				A3D0A7A32B00842000AC6A73 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -336,6 +350,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -363,6 +378,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
