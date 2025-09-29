@@ -24,7 +24,7 @@ public class BlurOverlayView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         animator.addAnimations {
-            self.effectView.effect = UIBlurEffect(style: .systemChromeMaterial)
+            self.effectView.effect = UIBlurEffect(style: .systemMaterialDark)
         }
         animator.startAnimation()
         animator.pauseAnimation()

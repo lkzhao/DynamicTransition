@@ -34,6 +34,13 @@ class HomeView: ComponentRootView {
                 }.inset(h: 20).size(height: 70).tappableView { [unowned self] in
                     navigationController?.pushView(PageFlipDetailView(), animated: true)
                 }.borderColor(.separator).borderWidth(1).cornerCurve(.continuous).cornerRadius(16)
+
+                HStack(spacing: 10, alignItems: .center) {
+                    Text("Multi Flip Transition", font: .systemFont(ofSize: 18)).flex()
+                    Image(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18)).tintColor(.label)
+                }.inset(h: 20).size(height: 70).tappableView { [unowned self] in
+                    navigationController?.pushView(MultiFlipHomeView(), animated: true)
+                }.borderColor(.separator).borderWidth(1).cornerCurve(.continuous).cornerRadius(16)
             }
         }.inset(20)
     }
