@@ -144,6 +144,7 @@ private class AdditiveCummulator<View: UIView, Value: SIMDRepresentable> {
     }
 
     func add(animation: AdditiveAnimation<View, Value>) {
+        animations.removeAll(where: { $0.value == nil })
         animations.append(.init(value: animation))
         animation.onValueChanged = { [weak self] in
             self?.animationDidUpdate()
