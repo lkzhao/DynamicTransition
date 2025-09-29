@@ -12,7 +12,7 @@ import Motion
 
 
 public struct MultiFlipConfig {
-    public var sourceContainerView: UIView?
+    public var sourceContainerView: UIView
     public var sourcePrimaryFlipView: UIView
     public init(sourceContainerView: UIView, sourcePrimaryFlipView: UIView) {
         self.sourceContainerView = sourceContainerView
@@ -126,7 +126,7 @@ public class MultiFlipTransition: InteractiveTransition {
         animator[foregroundContainerView, \MultiFlipContainerView.progress].dismissedValue = 0
         animator[foregroundContainerView, \MultiFlipContainerView.progress].presentedValue = 1
 
-        let otherSubviews = (flipConfig?.sourceContainerView?.subviews ?? []).filter { $0 != flipConfig?.sourcePrimaryFlipView }
+        let otherSubviews = (flipConfig?.sourceContainerView.subviews ?? []).filter { $0 != flipConfig?.sourcePrimaryFlipView }
         let otherImageViews = otherSubviews.filter { $0 is UIImageView }
         let otherNonImageViews = otherSubviews.filter { !($0 is UIImageView) }
         for (i, view) in otherImageViews.enumerated() {
@@ -155,8 +155,8 @@ public class MultiFlipTransition: InteractiveTransition {
             }
         }
         for view in otherNonImageViews {
-            animator[view, \UIView.alpha].dismissedValue = 1
-            animator[view, \UIView.alpha].presentedValue = 0
+            animator[view, \UIView.alphaProgress].dismissedValue = 0
+            animator[view, \UIView.alphaProgress].presentedValue = 1
         }
     }
 
@@ -409,6 +409,22 @@ public class SecondaryFlipContainerView: UIView {
 
         if let backgroundSnapshot {
             backgroundSnapshot.frameWithoutTransform = bounds
+        }
+    }
+}
+
+extension UIView {
+    private struct AssociatedKeys {
+        static var alphaProgress = "alphaProgress"
+    }
+    /// Use associated object to store alphaProgress
+    var alphaProgress: CGFloat {
+        get {
+            (objc_getAssociatedObject(self, &AssociatedKeys.alphaProgress) as? CGFloat) ?? 1.0 - alpha
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.alphaProgress, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            alpha = 1.0 - Motion.EasingFunction.easeOut.solveInterpolatedValue(0...1, fraction: (newValue * 2).clamp(0, 1))
         }
     }
 }

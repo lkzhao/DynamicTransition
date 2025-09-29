@@ -27,6 +27,9 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
     internal init(target: AnimationTarget<View, Value>) {
         self.target = target
         self.valueAnimation = BasicAnimation()
+        valueAnimation.onValueChanged { [weak self] value in
+            self?.onValueChanged?()
+        }
         AdditiveAnimationManager.shared.add(animation: self)
     }
 
