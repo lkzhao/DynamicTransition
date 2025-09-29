@@ -125,6 +125,39 @@ public class MultiFlipTransition: InteractiveTransition {
         // progress
         animator[foregroundContainerView, \MultiFlipContainerView.progress].dismissedValue = 0
         animator[foregroundContainerView, \MultiFlipContainerView.progress].presentedValue = 1
+
+        let otherSubviews = (flipConfig?.sourceContainerView?.subviews ?? []).filter { $0 != flipConfig?.sourcePrimaryFlipView }
+        let otherImageViews = otherSubviews.filter { $0 is UIImageView }
+        let otherNonImageViews = otherSubviews.filter { !($0 is UIImageView) }
+        for (i, view) in otherImageViews.enumerated() {
+            let secondaryContainerView = SecondaryFlipContainerView()
+            let transform = view.transform
+            view.transform = .identity
+            secondaryContainerView.progressDelay = CGFloat(otherSubviews.count - i) * 0.001
+            secondaryContainerView.progressScale = CGFloat(i) * 0.5 + 1.0
+            secondaryContainerView.frameWithoutTransform = container.convert(view.bounds, from: view)
+            secondaryContainerView.transform = transform
+            view.transform = transform
+            secondaryContainerView.baseRotation = transform.rotation
+            secondaryContainerView.backgroundView = view
+            secondaryContainerView.zPosition = 300
+            secondaryContainerView.autoresizingMask = []
+            secondaryContainerView.translatesAutoresizingMaskIntoConstraints = false
+            context.background.addSubview(secondaryContainerView)
+
+            animator[secondaryContainerView, \SecondaryFlipContainerView.progress].dismissedValue = 0
+            animator[secondaryContainerView, \SecondaryFlipContainerView.progress].presentedValue = 1
+            view.isHidden = true
+
+            animator.addCompletion { position in
+                view.isHidden = false
+                secondaryContainerView.removeFromSuperview()
+            }
+        }
+        for view in otherNonImageViews {
+            animator[view, \UIView.alpha].dismissedValue = 1
+            animator[view, \UIView.alpha].presentedValue = 0
+        }
     }
 
     public override func animationWillStart(targetPosition: TransitionEndPosition) {
@@ -194,7 +227,7 @@ public class MultiFlipTransition: InteractiveTransition {
             totalTranslation += translation
             let progress = progressFrom(offset: translation)
             animator[foregroundContainerView, \UIView.center].isIndependent = true
-            animator[foregroundContainerView, \UIView.center].currentValue += translation * (isMatched ? 0.5 : 1.0)
+            animator[foregroundContainerView, \UIView.center].currentValue += translation * (isMatched ? 0.3 : 1.0)
             animator.shift(progress: progress)
         default:
             guard let context, let animator, let foregroundContainerView else { return }
@@ -247,22 +280,24 @@ extension MultiFlipTransition: UIGestureRecognizerDelegate {
 }
 
 
-public class MultiFlipContainerView: ShadowContainerView {
-//    let contentView = UIView()
+public class MultiFlipContainerView: UIView {
 
+    var rotated: Bool = false
     var progress: CGFloat = 0 {
         didSet {
             let rotation = Motion.EasingFunction.easeOut.solveInterpolatedValue(-.pi...0, fraction: progress)
             let sinProgress = sin(progress * .pi)
+            let tilt = sinProgress * 0.15
             layer.transform = .identity.translatedBy(z: progress * 1000).withPerspective(m34: 1 / 1000)
-                .translatedBy(x: sinProgress * 100, y: sinProgress * 20)
+                .translatedBy(x: sinProgress * 200, y: sinProgress * 20)
+                .rotatedBy(tilt)
                 .rotatedBy(y: rotation)
-                .rotatedBy(sinProgress * 0.1)
-            let rotated = abs(rotation) > .pi / 2
+            rotated = abs(rotation - tilt) > .pi / 2
             foregroundView?.isHidden = rotated
             backgroundSnapshot?.isHidden = !rotated
             contentView.transform = .identity.scaledBy(x: !rotated ? 1 : -1)
             shadowOpacity = progress * 0.5
+            setNeedsLayout()
         }
     }
 
@@ -287,31 +322,90 @@ public class MultiFlipContainerView: ShadowContainerView {
         }
     }
 
-    public override var bounds: CGRect {
+    public let contentView = UIView()
+
+    public override var cornerRadius: CGFloat {
         didSet {
-            setNeedsLayout()
+            contentView.cornerRadius = cornerRadius
+        }
+    }
+
+    public override var frameWithoutTransform: CGRect {
+        didSet {
+            recalculateShadowPath()
         }
     }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
-//        clipsToBounds = true
-//        addSubview(contentView)
+        addSubview(contentView)
+        cornerCurve = .continuous
+        contentView.cornerCurve = .continuous
+        contentView.autoresizingMask = []
+        contentView.autoresizesSubviews = false
+        contentView.clipsToBounds = true
+        shadowColor = UIColor(dark: .black, light: .black.withAlphaComponent(0.6))
+        shadowRadius = 48
+        shadowOpacity = 1.0
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
+    func recalculateShadowPath() {
+        shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: cornerRadius)
+    }
+
     public override func layoutSubviews() {
         super.layoutSubviews()
-        contentView.frameWithoutTransform = bounds
+
+        let targetSize = foregroundView?.bounds.size ?? CGSize(width: 1, height: 1)
+        let sourceSize = backgroundView?.bounds.size ?? CGSize(width: 1, height: 1)
+        let width = !rotated ? targetSize.width * (bounds.height / targetSize.height) : sourceSize.width * (bounds.height / sourceSize.height)
+        contentView.frameWithoutTransform = CGRect(center: bounds.center, size: CGSize(width: width, height: bounds.height))
 
         if let foregroundView {
             let foregroundSize = foregroundView.bounds.size
-            foregroundView.scale = foregroundSize.size(fill: bounds.size).width / foregroundSize.width
-            foregroundView.center = bounds.center
+            foregroundView.scale = foregroundSize.size(fill: contentView.bounds.size).width / foregroundSize.width
+            foregroundView.center = contentView.bounds.center
         }
+
+        if let backgroundSnapshot {
+            backgroundSnapshot.frameWithoutTransform = contentView.bounds
+        }
+    }
+}
+
+public class SecondaryFlipContainerView: UIView {
+    var baseRotation: CGFloat = 0
+    var progressDelay: CGFloat = 0
+    var progressScale: CGFloat = 1.0
+    var progress: CGFloat = 0 {
+        didSet {
+            let t = ((progress - progressDelay) * progressScale / (1 - progressDelay)).clamp(0, 1)
+            let rotation = Motion.EasingFunction.easeOut.solveInterpolatedValue(0...(CGFloat.pi * 0.5), fraction: t)
+            isHidden = rotation >= .pi / 2
+            layer.transform = .identity.withPerspective(m34: 1 / 1000)
+                .scaledBy(1.0 + t * 2.5)
+                .translatedBy(x: t * 400, y: t * 150)
+                .rotatedBy(baseRotation + t * 1.2)
+                .rotatedBy(y: rotation)
+        }
+    }
+
+    var backgroundSnapshot: UIView?
+    var backgroundView: UIView? {
+        didSet {
+            guard let backgroundView else { return }
+            backgroundSnapshot = backgroundView.snapshotView(afterScreenUpdates: true)
+            addSubview(backgroundSnapshot!)
+            setNeedsLayout()
+        }
+    }
+
+    public override func layoutSubviews() {
+        super.layoutSubviews()
 
         if let backgroundSnapshot {
             backgroundSnapshot.frameWithoutTransform = bounds

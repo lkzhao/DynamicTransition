@@ -18,8 +18,7 @@ internal protocol AnyTransitionPropertyAnimator {
 public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> {
     private let animation: AdditiveAnimation<View, Value>
 
-    public var response: CGFloat
-    public var dampingRatio: CGFloat
+    public var animationConfig: AdditiveAnimation<View, Value>.AdditiveAnimationConfig = .spring(response: 0.3, dampingRatio: 1.0)
 
     public var presentedOffsetValue: Value {
         didSet {
@@ -96,12 +95,10 @@ public class TransitionPropertyAnimator<View: UIView, Value: SIMDRepresentable> 
 
     public private(set) var targetPosition: TransitionEndPosition?
 
-    internal init(target: AnimationTarget<View, Value>, response: CGFloat, dampingRatio: CGFloat) {
+    internal init(target: AnimationTarget<View, Value>) {
         self.animation = AdditiveAnimation(target: target)
         self.presentedOffsetValue = .zero
         self.dismissedOffsetValue = .zero
-        self.response = response
-        self.dampingRatio = dampingRatio
     }
 
     /// Set a new target value and apply the offset to the current value
@@ -126,7 +123,7 @@ extension TransitionPropertyAnimator: AnyTransitionPropertyAnimator {
         let toOffset = position == .presented ? presentedOffsetValue : dismissedOffsetValue
         isIndependent = false
         targetPosition = position
-        animation.animate(toOffset: toOffset, response: response, dampingRatio: dampingRatio, completion: completion)
+        animation.animate(toOffset: toOffset, configuration: animationConfig, completion: completion)
     }
 
     internal func pause() {

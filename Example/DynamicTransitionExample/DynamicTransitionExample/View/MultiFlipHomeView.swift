@@ -29,7 +29,8 @@ class MultiFlipDetailView: ComponentRootView {
     override func viewDidLoad() {
         super.viewDidLoad()
 //        transition.response = 3.0
-        backgroundColor = .init(white: 0.95, alpha: 1.0)
+        transition.response = 0.8
+//        backgroundColor = .init(white: 0.95, alpha: 1.0)
 
         addGestureRecognizer(transition.horizontalDismissGestureRecognizer)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTap)))
@@ -55,29 +56,32 @@ class MultiFlipCardCell: ComponentView {
         super.init(frame: .zero)
         component = HStack(spacing: -70) {
             if let image = UIImage(named: "item1") {
-                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).rotation(-0.2).background {
-                    SwiftUIComponent {
-                        BlurImageShadow(image: image)
-                    }.fill()
-                }
+                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).rotation(-0.2)
+                    .background {
+                        SwiftUIComponent {
+                            BlurImageShadow(image: image)
+                        }.fill().zPosition(-1)
+                    }
             }
             if let image = UIImage(named: "item2") {
-                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).tag(1).zPosition(1).background {
-                    SwiftUIComponent {
-                        BlurImageShadow(image: image)
-                    }.fill()
-                }
+                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).tag(1).zPosition(1)
+                    .background {
+                        SwiftUIComponent {
+                            BlurImageShadow(image: image)
+                        }.fill().zPosition(-1)
+                    }
             }
             if let image = UIImage(named: "item4") {
-                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).rotation(0.2).background {
-                    SwiftUIComponent {
-                        BlurImageShadow(image: image)
-                    }.fill()
-                }
+                Image(image).size(width: 100, height: 120).cornerRadius(12).clipsToBounds(true).rotation(0.2)
+                    .background {
+                        SwiftUIComponent {
+                            BlurImageShadow(image: image)
+                        }.fill().zPosition(-1)
+                    }
             }
         }
     }
-    
+
     @MainActor required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
