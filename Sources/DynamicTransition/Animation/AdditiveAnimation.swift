@@ -115,7 +115,6 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
 
     public func stop() {
         valueAnimation.stop()
-        AdditiveAnimationManager.shared.remove(animation: self)
     }
 }
 
