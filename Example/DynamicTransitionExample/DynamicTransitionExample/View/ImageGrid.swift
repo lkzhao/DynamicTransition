@@ -17,7 +17,7 @@ struct ImageGrid: ComponentBuilder {
                         let matchDetailView = MatchTransitionDetailView()
                         matchDetailView.imageName = imageName
                         matchDetailView.image = image
-                        $0.navigationController?.pushView(matchDetailView, animated: true)
+                        $0.navigationView?.pushView(matchDetailView, animated: true)
                     }
                     .cornerRadius(16)
                     .cornerCurve(.continuous)

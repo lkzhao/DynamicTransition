@@ -11,7 +11,10 @@ import UIKit
 
 func setupCustomPresentation() {
     BaseToolbox.customDismissMethod = { (view, completion) in
-        if let navVC = view.navigationController, navVC.views.count > 1 {
+        if let navView = view.navigationView, navView.views.count > 1 {
+            navView.popView(animated: true)
+            completion?()
+        } else if let navVC = view.navigationController, navVC.views.count > 1 {
             navVC.popView(animated: true)
             completion?()
         } else if let navVC = view.parentViewController?.navigationController, navVC.viewControllers.count > 1 {

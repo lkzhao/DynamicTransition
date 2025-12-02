@@ -50,15 +50,15 @@ class MatchTransitionDetailView: ComponentRootView {
     }
 
     @objc func didTap() {
-        navigationController?.popView(animated: true)
+        navigationView?.popView(animated: true)
     }
 
     func pushTransition() {
-        navigationController?.pushView(PushTransitionDetailView(), animated: true)
+        navigationView?.pushView(PushTransitionDetailView(), animated: true)
     }
 
     func matchTransition() {
-        navigationController?.pushView(MatchTransitionDetailView(), animated: true)
+        navigationView?.pushView(MatchTransitionDetailView(), animated: true)
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {

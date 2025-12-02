@@ -23,7 +23,7 @@ class HomeView: ComponentRootView {
     }
 
     func pushTransition() {
-        navigationController?.pushView(PushTransitionDetailView(), animated: true)
+        navigationView?.pushView(PushTransitionDetailView(), animated: true)
     }
 }
 

@@ -253,8 +253,8 @@ public class MatchTransition: InteractiveTransition {
         case .began:
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             beginInteractiveTransition()
-            if context == nil, let navigationController = view.navigationController, navigationController.views.count > 1 {
-                navigationController.popView(animated: true)
+            if context == nil, let navigationView = view.navigationView, navigationView.views.count > 1 {
+                navigationView.popView(animated: true)
             }
             totalTranslation = .zero
         case .changed:

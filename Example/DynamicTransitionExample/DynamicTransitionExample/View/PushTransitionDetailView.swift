@@ -30,11 +30,11 @@ class PushTransitionDetailView: ComponentRootView {
     }
 
     @objc func didTap() {
-        navigationController?.popView(animated: true)
+        navigationView?.popView(animated: true)
     }
 
     func pushTransition() {
-        navigationController?.pushView(PushTransitionDetailView(), animated: true)
+        navigationView?.pushView(PushTransitionDetailView(), animated: true)
     }
 }
 
