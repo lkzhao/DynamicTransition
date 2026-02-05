@@ -8,23 +8,23 @@
 import UIKit
 import Motion
 
-internal struct AnimationTarget<View: UIView, Value: SIMDRepresentable>: Hashable {
+internal struct AnimationTarget<Target: AnyObject, Value: SIMDRepresentable>: Hashable {
     public let id: ObjectIdentifier
-    public weak var view: View?
-    public let keyPath: ReferenceWritableKeyPath<View, Value>
+    public weak var target: Target?
+    public let keyPath: ReferenceWritableKeyPath<Target, Value>
 
-    public init(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) {
-        self.view = view
+    public init(target: Target, keyPath: ReferenceWritableKeyPath<Target, Value>) {
+        self.target = target
         self.keyPath = keyPath
-        self.id = ObjectIdentifier(view)
+        self.id = ObjectIdentifier(target)
     }
 
     public var value: Value {
         get {
-            view?[keyPath: keyPath] ?? .zero
+            target?[keyPath: keyPath] ?? .zero
         }
         nonmutating set {
-            view?[keyPath: keyPath] = newValue
+            target?[keyPath: keyPath] = newValue
         }
     }
 

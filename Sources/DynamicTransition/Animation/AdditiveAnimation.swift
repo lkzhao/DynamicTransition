@@ -8,15 +8,15 @@
 import UIKit
 import Motion
 
-public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
-    internal let target: AnimationTarget<View, Value>
+public class AdditiveAnimation<Target: AnyObject, Value: SIMDRepresentable> {
+    internal let target: AnimationTarget<Target, Value>
     internal let offsetAnimation: SpringAnimation<Value>
 
-    public convenience init(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) {
-        self.init(target: AnimationTarget(view: view, keyPath: keyPath))
+    public convenience init(target: Target, keyPath: ReferenceWritableKeyPath<Target, Value>) {
+        self.init(target: AnimationTarget(target: target, keyPath: keyPath))
     }
 
-    internal init(target: AnimationTarget<View, Value>) {
+    internal init(target: AnimationTarget<Target, Value>) {
         self.target = target
         offsetAnimation = SpringAnimation(initialValue: .zero)
         AdditiveAnimationManager.shared.add(animation: self)
@@ -88,7 +88,7 @@ public class AdditiveAnimation<View: UIView, Value: SIMDRepresentable> {
 }
 
 
-private class AdditiveCummulator<View: UIView, Value: SIMDRepresentable> {
+private class AdditiveCummulator<View: AnyObject, Value: SIMDRepresentable> {
     let target: AnimationTarget<View, Value>
 
     var baseValue: Value
@@ -123,27 +123,27 @@ private class AdditiveAnimationManager {
     static let shared = AdditiveAnimationManager()
     var children: [AnyHashable: Any] = [:]
 
-    func add<View:UIView, Value: SIMDRepresentable>(animation: AdditiveAnimation<View, Value>) {
+    func add<Target: AnyObject, Value: SIMDRepresentable>(animation: AdditiveAnimation<Target, Value>) {
         if children[animation.target] == nil {
             children[animation.target] = AdditiveCummulator(target: animation.target)
         }
-        (children[animation.target]! as! AdditiveCummulator<View, Value>).add(animation: animation.offsetAnimation)
+        (children[animation.target]! as! AdditiveCummulator<Target, Value>).add(animation: animation.offsetAnimation)
     }
 
-    func baseValue<View:UIView, Value: SIMDRepresentable>(target: AnimationTarget<View, Value>) -> Value {
-        (children[target] as? AdditiveCummulator<View, Value>)?.baseValue ?? target.value
+    func baseValue<Target: AnyObject, Value: SIMDRepresentable>(target: AnimationTarget<Target, Value>) -> Value {
+        (children[target] as? AdditiveCummulator<Target, Value>)?.baseValue ?? target.value
     }
 
-    func setBaseValue<View:UIView, Value: SIMDRepresentable>(target: AnimationTarget<View, Value>, value: Value) {
-        if let cummulator = children[target] as? AdditiveCummulator<View, Value> {
+    func setBaseValue<Target: AnyObject, Value: SIMDRepresentable>(target: AnimationTarget<Target, Value>, value: Value) {
+        if let cummulator = children[target] as? AdditiveCummulator<Target, Value> {
             cummulator.baseValue = value
         } else {
             target.value = value
         }
     }
 
-    func remove<View: UIView, Value: SIMDRepresentable>(animation: AdditiveAnimation<View, Value>) {
-        guard let child = children[animation.target] as? AdditiveCummulator<View, Value> else { return }
+    func remove<Target: AnyObject, Value: SIMDRepresentable>(animation: AdditiveAnimation<Target, Value>) {
+        guard let child = children[animation.target] as? AdditiveCummulator<Target, Value> else { return }
         child.remove(animation: animation.offsetAnimation)
         if child.animations.isEmpty {
             children[animation.target] = nil

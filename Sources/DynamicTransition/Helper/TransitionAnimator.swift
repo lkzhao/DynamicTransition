@@ -27,12 +27,12 @@ public class TransitionAnimator {
         self.dampingRatio = dampingRatio
     }
 
-    public subscript<View: UIView, Value: SIMDRepresentable>(view: View, keyPath: ReferenceWritableKeyPath<View, Value>) -> TransitionPropertyAnimator<View, Value> {
-        let target = AnimationTarget(view: view, keyPath: keyPath)
-        if let animator = children[target] as? TransitionPropertyAnimator<View, Value> {
+    public subscript<Target, Value: SIMDRepresentable>(target: Target, keyPath: ReferenceWritableKeyPath<Target, Value>) -> TransitionPropertyAnimator<Target, Value> {
+        let target = AnimationTarget(target: target, keyPath: keyPath)
+        if let animator = children[target] as? TransitionPropertyAnimator<Target, Value> {
             return animator
         } else {
-            let animator = TransitionPropertyAnimator<View, Value>(target: target, response: response, dampingRatio: dampingRatio)
+            let animator = TransitionPropertyAnimator<Target, Value>(target: target, response: response, dampingRatio: dampingRatio)
             children[target] = animator
             return animator
         }
